@@ -41,6 +41,7 @@ def _try_postgres() -> bool:
 
 def _detect_backend() -> str:
     forced = os.environ.get("DB_BACKEND", "").lower()
+    print(f"DB_BACKEND={forced}")
     if forced in ("postgres", "postgresql"):
         return "postgres"
     if forced == "sqlite":
