@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marriage Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0f0e0b;
+    --surface:   #1a1814;
+    --surface2:  #242018;
+    --border:    #3a3428;
+    --gold:      #c9a84c;
+    --gold-lt:   #e2c47a;
+    --gold-dim:  #6b5520;
+    --red:       #c0392b;
+    --red-lt:    #e74c3c;
+    --green:     #27ae60;
+    --green-lt:  #2ecc71;
+    --text:      #f0ead8;
+    --text-dim:  #8a7d60;
+    --text-mute: #4a4030;
+    --radius:    6px;
+    --shadow:    0 4px 32px rgba(0,0,0,.6);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Lora', serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(201,168,76,.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 90%, rgba(192,57,43,.04) 0%, transparent 50%);
+  }
+  #app { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  header {
+    text-align: center; padding: 40px 0 32px;
+    border-bottom: 1px solid var(--border); margin-bottom: 32px; position: relative;
+  }
+  header::before, header::after {
+    content: '♠ ♥ ♣ ♦'; position: absolute; top: 50%; transform: translateY(-50%);
+    color: var(--gold-dim); font-size: 13px; letter-spacing: 6px;
+  }
+  header::before { left: 0; } header::after { right: 0; }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(28px, 6vw, 48px); font-weight: 900;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-lt) 50%, var(--gold) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    letter-spacing: 2px; line-height: 1;
+  }
+  .logo-sub {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 4px;
+    text-transform: uppercase; color: var(--text-dim); margin-top: 6px;
+  }
+
+  .screen { display: none; animation: fadeIn .25s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:none; } }
+
+  h2 {
+    font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700;
+    color: var(--gold-lt); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+  }
+  h2 .suit { font-size: 18px; }
+  h3 { font-family: 'Playfair Display', serif; font-size: 16px; color: var(--text-dim); margin-bottom: 12px; font-weight: 400; font-style: italic; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+  .card + .card { margin-top: 16px; }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+
+  button { cursor: pointer; font-family: 'DM Mono', monospace; border: none; border-radius: var(--radius); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; transition: all .15s; }
+  .btn-primary { background: linear-gradient(135deg, #a07830, var(--gold)); color: #0f0e0b; padding: 12px 28px; font-weight: 500; font-size: 13px; box-shadow: 0 2px 12px rgba(201,168,76,.3); }
+  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-secondary { background: transparent; color: var(--gold); border: 1px solid var(--gold-dim); padding: 10px 22px; }
+  .btn-secondary:hover { border-color: var(--gold); background: rgba(201,168,76,.06); }
+  .btn-danger { background: transparent; color: var(--red-lt); border: 1px solid rgba(192,57,43,.4); padding: 8px 16px; }
+  .btn-danger:hover { background: rgba(192,57,43,.1); }
+  .btn-ghost { background: transparent; color: var(--text-dim); padding: 8px 14px; font-size: 11px; }
+  .btn-ghost:hover { color: var(--text); }
+  .btn-sm { padding: 6px 14px; font-size: 11px; }
+  .btn-xs { padding: 4px 10px; font-size: 10px; }
+
+  input[type="text"], input[type="number"] {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text); font-family: 'Lora', serif; font-size: 14px; padding: 10px 14px;
+    width: 100%; transition: border-color .15s; outline: none;
+  }
+  input:focus { border-color: var(--gold-dim); }
+  input::placeholder { color: var(--text-mute); }
+  label { display: block; font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 6px; }
+  .field { margin-bottom: 16px; }
+
+  .game-list { display: flex; flex-direction: column; gap: 10px; }
+  .game-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: border-color .15s, background .15s; }
+  .game-item:hover { border-color: var(--gold-dim); background: var(--surface2); }
+  .game-item-name { font-family: 'Playfair Display', serif; font-size: 16px; }
+  .game-item-meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+  .game-item-badge { font-family: 'DM Mono', monospace; font-size: 11px; padding: 4px 10px; border-radius: 20px; background: rgba(201,168,76,.1); color: var(--gold); border: 1px solid var(--gold-dim); }
+
+  .player-count-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .count-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); padding: 10px 18px; font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; border-radius: var(--radius); transition: all .15s; }
+  .count-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+  .count-btn.selected { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,.1); }
+
+  .player-inputs { display: flex; flex-direction: column; gap: 10px; }
+  .player-input-row { display: flex; gap: 10px; align-items: center; }
+  .player-input-row .suit-badge { font-size: 18px; width: 32px; text-align: center; color: var(--text-dim); flex-shrink: 0; }
+
+  /* ── Player roster (in game screen) ── */
+  .player-roster { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .player-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 6px 14px;
+    font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text);
+    transition: all .15s;
+  }
+  .player-chip.inactive { opacity: .4; border-style: dashed; }
+  .player-chip .chip-name { font-family: 'Lora', serif; font-size: 13px; }
+  .player-chip .chip-toggle {
+    background: none; border: none; font-size: 13px; padding: 0 2px;
+    color: var(--text-dim); cursor: pointer; letter-spacing: 0; text-transform: none;
+    transition: color .12s;
+  }
+  .player-chip .chip-toggle:hover { color: var(--text); }
+  .add-player-row { display: flex; gap: 8px; margin-top: 10px; }
+  .add-player-row input { flex: 1; }
+
+  /* ── Hand entry table ── */
+  .hand-table { width: 100%; border-collapse: collapse; }
+  .hand-table th { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  .hand-table td { padding: 10px 12px; border-bottom: 1px solid rgba(58,52,40,.5); vertical-align: middle; }
+  .hand-table tr:last-child td { border-bottom: none; }
+  .hand-table tr.winner-row td { background: rgba(201,168,76,.04); }
+  .hand-table tr.inactive-row td { opacity: .35; pointer-events: none; }
+
+  .player-cell { font-family: 'Playfair Display', serif; font-size: 15px; }
+
+  .status-group { display: flex; gap: 4px; }
+  .status-btn { padding: 5px 10px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.5px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); border-radius: 4px; transition: all .12s; }
+  .status-btn:hover { border-color: var(--gold-dim); color: var(--text); }
+  .status-btn.active-seen   { background: rgba(39,174,96,.15);  border-color: var(--green);    color: var(--green-lt); }
+  .status-btn.active-unseen { background: rgba(192,57,43,.15);  border-color: var(--red);      color: var(--red-lt); }
+  .status-btn.active-duplee { background: rgba(201,168,76,.12); border-color: var(--gold-dim); color: var(--gold); }
+  .status-btn.status-disabled { opacity: .25; cursor: not-allowed; }
+
+  .maal-input { width: 80px !important; text-align: right; font-family: 'DM Mono', monospace; font-size: 15px; }
+
+  .winner-radio { display: flex; justify-content: center; }
+  .winner-radio input[type="radio"] { display: none; }
+  .winner-radio label { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 50%; cursor: pointer; color: var(--text-mute); font-size: 14px; transition: all .12s; margin: 0; }
+  .winner-radio input:checked + label { border-color: var(--gold); background: rgba(201,168,76,.15); color: var(--gold-lt); }
+
+  /* ── Better Game toggle ── */
+  .better-game-toggle {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 18px; margin-bottom: 16px;
+    cursor: pointer; transition: border-color .15s;
+  }
+  .better-game-toggle:hover { border-color: var(--gold-dim); }
+  .better-game-toggle.active { border-color: var(--gold); background: rgba(201,168,76,.08); }
+  .better-game-toggle .bg-checkbox {
+    width: 20px; height: 20px; border: 2px solid var(--border); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0; transition: all .15s;
+  }
+  .better-game-toggle.active .bg-checkbox { border-color: var(--gold); background: var(--gold); color: #0f0e0b; }
+  .better-game-toggle .bg-label { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+  .better-game-toggle.active .bg-label { color: var(--gold-lt); }
+  .better-game-toggle .bg-desc { font-size: 11px; color: var(--text-mute); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .better-game-toggle.active .bg-desc { color: var(--gold-dim); }
+  .bg-text { flex: 1; }
+
+  /* ── Scoreboard ── */
+  .scoreboard-wrap { overflow-x: auto; }
+  .score-table { width: 100%; border-collapse: collapse; min-width: 500px; }
+  .score-table th { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); padding: 10px 14px; text-align: center; border-bottom: 2px solid var(--border); white-space: nowrap; }
+  .score-table th.player-th { font-family: 'Playfair Display', serif; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--gold-lt); }
+  .score-table th.player-th.inactive-th { color: var(--text-mute); font-style: italic; }
+  .score-table td { padding: 9px 14px; text-align: center; border-bottom: 1px solid rgba(58,52,40,.5); font-family: 'DM Mono', monospace; font-size: 13px; }
+  .score-table .hand-label { font-family: 'Lora', serif; font-size: 12px; color: var(--text-dim); text-align: left; white-space: nowrap; }
+  .score-table tfoot td { border-top: 2px solid var(--border); border-bottom: none; font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; padding: 12px 14px; }
+  .pts-pos { color: var(--green-lt); }
+  .pts-neg { color: var(--red-lt); }
+  .pts-zero { color: var(--text-dim); }
+  .total-best { color: var(--gold-lt) !important; }
+  .winner-icon { font-size: 14px; }
+
+  /* Better game badge in scoreboard */
+  .better-badge { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .5px; background: rgba(201,168,76,.15); border: 1px solid var(--gold-dim); color: var(--gold); border-radius: 3px; padding: 1px 5px; margin-left: 5px; vertical-align: middle; }
+
+  .hand-expand-row { background: var(--surface2); display: none; }
+  .hand-expand-row.open { display: table-row; }
+  .hand-expand-row td { padding: 12px 20px !important; }
+  .clickable-row { cursor: pointer; }
+  .clickable-row:hover td { background: rgba(201,168,76,.03); }
+
+  .hand-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-top: 4px; }
+  .hand-detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; font-family: 'DM Mono', monospace; font-size: 11px; }
+  .hand-detail-card .hd-name { color: var(--gold-lt); font-size: 13px; margin-bottom: 4px; font-family: 'Playfair Display', serif; }
+  .hand-detail-card .hd-row { display: flex; justify-content: space-between; color: var(--text-dim); }
+  .hand-detail-card .hd-row span:last-child { color: var(--text); }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 140px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+  .error-msg { background: rgba(192,57,43,.12); border: 1px solid rgba(192,57,43,.4); border-radius: var(--radius); color: var(--red-lt); padding: 12px 16px; font-family: 'DM Mono', monospace; font-size: 12px; margin-top: 12px; display: none; }
+  .error-msg.visible { display: block; }
+  .success-msg { background: rgba(39,174,96,.1); border: 1px solid rgba(39,174,96,.3); border-radius: var(--radius); color: var(--green-lt); padding: 12px 16px; font-family: 'DM Mono', monospace; font-size: 12px; margin-top: 12px; display: none; }
+  .success-msg.visible { display: block; }
+
+  .breadcrumb { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .breadcrumb a { color: var(--gold-dim); cursor: pointer; text-decoration: none; }
+  .breadcrumb a:hover { color: var(--gold); }
+
+  .empty-state { text-align: center; padding: 40px; color: var(--text-dim); font-style: italic; }
+  .empty-state .big-suit { font-size: 40px; opacity: .2; display: block; margin-bottom: 12px; }
+
+  .section-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-overlay { position: fixed; inset: 0; background: rgba(15,14,11,.6); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .loading-overlay.visible { display: flex; }
+  .loading-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 40px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text-dim); display: flex; align-items: center; gap: 10px; }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay" class="loading-overlay">
+  <div class="loading-box"><span class="spinner"></span> Loading…</div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="logo">Marriage</div>
+    <div class="logo-sub">Points Calculator</div>
+  </header>
+
+  <!-- HOME -->
+  <div id="screen-home" class="screen active">
+    <h2><span class="suit">♠</span> Welcome</h2>
+    <div class="row" style="margin-bottom:32px">
+      <button class="btn-primary" onclick="showScreen('screen-new-game')">+ New Game</button>
+      <button class="btn-secondary" onclick="loadGameList()">Continue Game</button>
+    </div>
+    <div id="game-list-section" style="display:none">
+      <h3>Saved Games</h3>
+      <div id="game-list" class="game-list"></div>
+    </div>
+  </div>
+
+  <!-- NEW GAME -->
+  <div id="screen-new-game" class="screen">
+    <div class="breadcrumb"><a onclick="showScreen('screen-home')">Home</a> › New Game</div>
+    <h2><span class="suit">♣</span> New Game</h2>
+    <div class="card">
+      <div class="field">
+        <label>Game Name</label>
+        <input type="text" id="new-game-name" placeholder="e.g. Friday Night, Dashain 2081…">
+      </div>
+      <div class="field">
+        <label>Number of Players</label>
+        <div class="player-count-row" id="player-count-row">
+          <button class="count-btn" data-n="3" onclick="setPlayerCount(3)">3</button>
+          <button class="count-btn" data-n="4" onclick="setPlayerCount(4)">4</button>
+          <button class="count-btn" data-n="5" onclick="setPlayerCount(5)">5</button>
+          <button class="count-btn" data-n="6" onclick="setPlayerCount(6)">6</button>
+        </div>
+      </div>
+      <div class="field" id="player-names-section" style="display:none">
+        <label>Player Names</label>
+        <div class="player-inputs" id="player-inputs"></div>
+      </div>
+      <div id="new-game-error" class="error-msg"></div>
+      <div class="section-actions">
+        <button class="btn-primary" onclick="createGame()">Create Game</button>
+        <button class="btn-ghost" onclick="showScreen('screen-home')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="screen-game" class="screen">
+    <div class="breadcrumb"><a onclick="showScreen('screen-home')">Home</a> › <span id="game-breadcrumb">Game</span></div>
+    <div class="card-header" style="margin-bottom:20px">
+      <h2 id="game-title" style="margin:0"><span class="suit">♥</span> Game</h2>
+      <button class="btn-primary btn-sm" onclick="showAddHand()">+ Add Hand</button>
+    </div>
+
+    <!-- Players card -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header" style="margin-bottom:12px">
+        <h3 style="margin:0">Players</h3>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mute)">click to toggle active</span>
+      </div>
+      <div id="player-roster" class="player-roster"></div>
+      <div id="add-player-section">
+        <div class="add-player-row">
+          <input type="text" id="new-player-name" placeholder="New player name…" maxlength="40">
+          <button class="btn-secondary btn-sm" onclick="addPlayer()">Add Player</button>
+        </div>
+        <div id="add-player-error" class="error-msg" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <!-- Scoreboard -->
+    <div class="card" id="scoreboard-card">
+      <h3>Scoreboard</h3>
+      <div class="scoreboard-wrap">
+        <table class="score-table" id="score-table">
+          <thead id="score-thead"></thead>
+          <tbody id="score-tbody"></tbody>
+          <tfoot id="score-tfoot"></tfoot>
+        </table>
+      </div>
+      <div id="scoreboard-empty" class="empty-state" style="display:none">
+        <span class="big-suit">♦</span>
+        No hands played yet. Add the first hand above.
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD HAND SCREEN -->
+  <div id="screen-add-hand" class="screen">
+    <div class="breadcrumb">
+      <a onclick="showScreen('screen-home')">Home</a> ›
+      <a id="hand-game-breadcrumb" onclick="goToCurrentGame()">Game</a> ›
+      Add Hand
+    </div>
+    <h2><span class="suit">♦</span> Add Hand</h2>
+
+    <div class="card">
+      <p style="color:var(--text-dim);font-size:13px;margin-bottom:20px;">
+        Active players only. Select winner, set status, and enter Maal.
+      </p>
+
+      <!-- Better Game toggle -->
+      <div id="better-game-toggle" class="better-game-toggle" onclick="toggleBetterGame()">
+        <div class="bg-checkbox" id="bg-checkbox"></div>
+        <div class="bg-text">
+          <div class="bg-label">Better Game</div>
+          <div class="bg-desc">All points doubled for this hand</div>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="hand-table">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Winner</th>
+              <th>Status</th>
+              <th style="text-align:right">Maal</th>
+            </tr>
+          </thead>
+          <tbody id="hand-entry-tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="add-hand-error" class="error-msg"></div>
+      <div id="add-hand-success" class="success-msg"></div>
+
+      <div class="section-actions">
+        <button class="btn-primary" onclick="finalizeHand()">Finalize Hand</button>
+        <button class="btn-ghost" onclick="goToCurrentGame()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = '/api';
+let currentGame = null;
+let handEntries = [];
+let isBetterGame = false;
+
+const SUITS = ['♠','♥','♦','♣','♠','♥'];
+
+// ── Utilities ──────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+function loading(on) { document.getElementById('loading-overlay').classList.toggle('visible', on); }
+function showError(elId, msg) {
+  const el = document.getElementById(elId);
+  el.textContent = msg; el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 6000);
+}
+function showSuccess(elId, msg) {
+  const el = document.getElementById(elId);
+  el.textContent = msg; el.classList.add('visible');
+}
+async function apiFetch(url, opts = {}) {
+  const res = await fetch(API + url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'API error');
+  return data;
+}
+function fmtDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+function ptsClass(n) { return n > 0 ? 'pts-pos' : n < 0 ? 'pts-neg' : 'pts-zero'; }
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Home ───────────────────────────────────────────────
+async function loadGameList() {
+  loading(true);
+  try {
+    const games = await apiFetch('/games');
+    const section = document.getElementById('game-list-section');
+    const list = document.getElementById('game-list');
+    section.style.display = 'block';
+    if (!games.length) {
+      list.innerHTML = '<div class="empty-state"><span class="big-suit">♠</span>No saved games found.</div>';
+      return;
+    }
+    list.innerHTML = games.map(g => `
+      <div class="game-item" onclick="openGame(${g.id})">
+        <div>
+          <div class="game-item-name">${esc(g.name)}</div>
+          <div class="game-item-meta">${fmtDate(g.created_at)}</div>
+        </div>
+        <span class="game-item-badge">${g.hand_count} hand${g.hand_count !== 1 ? 's' : ''}</span>
+      </div>`).join('');
+  } catch(e) { alert('Could not load games: ' + e.message); }
+  finally { loading(false); }
+}
+
+// ── New Game ───────────────────────────────────────────
+let selectedPlayerCount = 0;
+
+function setPlayerCount(n) {
+  selectedPlayerCount = n;
+  document.querySelectorAll('.count-btn').forEach(b => b.classList.toggle('selected', parseInt(b.dataset.n) === n));
+  const section = document.getElementById('player-names-section');
+  const inputs = document.getElementById('player-inputs');
+  section.style.display = 'block';
+  inputs.innerHTML = Array.from({length: n}, (_, i) => `
+    <div class="player-input-row">
+      <span class="suit-badge">${SUITS[i]}</span>
+      <input type="text" placeholder="Player ${i+1} name" id="pname-${i}">
+    </div>`).join('');
+  document.getElementById('pname-0').focus();
+}
+
+async function createGame() {
+  const name = document.getElementById('new-game-name').value.trim();
+  if (!name) { showError('new-game-error', 'Please enter a game name.'); return; }
+  if (!selectedPlayerCount) { showError('new-game-error', 'Please select a number of players.'); return; }
+  const players = [];
+  for (let i = 0; i < selectedPlayerCount; i++) {
+    const v = (document.getElementById(`pname-${i}`)?.value || '').trim();
+    if (!v) { showError('new-game-error', `Please enter a name for Player ${i+1}.`); return; }
+    players.push(v);
+  }
+  loading(true);
+  try {
+    const game = await apiFetch('/games', { method: 'POST', body: JSON.stringify({ name, players }) });
+    currentGame = game;
+    openGame(game.id);
+  } catch(e) { showError('new-game-error', e.message); }
+  finally { loading(false); }
+}
+
+// ── Game Screen ────────────────────────────────────────
+async function openGame(gameId) {
+  loading(true);
+  try {
+    const [game, board] = await Promise.all([
+      apiFetch(`/games/${gameId}`),
+      apiFetch(`/games/${gameId}/scoreboard`),
+    ]);
+    currentGame = game;
+    renderGameScreen(game, board);
+    showScreen('screen-game');
+  } catch(e) { alert('Could not load game: ' + e.message); }
+  finally { loading(false); }
+}
+
+function renderGameScreen(game, board) {
+  document.getElementById('game-title').innerHTML = `<span class="suit">♥</span> ${esc(game.name)}`;
+  document.getElementById('game-breadcrumb').textContent = game.name;
+  document.getElementById('hand-game-breadcrumb').textContent = game.name;
+  document.getElementById('new-player-name').value = '';
+
+  renderPlayerRoster(game.players);
+  renderScoreboard(game.players, board);
+}
+
+function renderPlayerRoster(players) {
+  const roster = document.getElementById('player-roster');
+  const addSection = document.getElementById('add-player-section');
+  const activeCount = players.filter(p => p.is_active).length;
+  const canAdd = players.length < 6;
+
+  roster.innerHTML = players.map(p => `
+    <div class="player-chip ${p.is_active ? '' : 'inactive'}" id="chip-${p.id}">
+      <span class="chip-name">${esc(p.name)}</span>
+      <button class="chip-toggle" onclick="togglePlayerActive(${p.id}, ${p.is_active})"
+        title="${p.is_active ? 'Deactivate player' : 'Activate player'}">
+        ${p.is_active ? '●' : '○'}
+      </button>
+    </div>`).join('');
+
+  addSection.style.display = canAdd ? 'block' : 'none';
+}
+
+async function togglePlayerActive(playerId, currentlyActive) {
+  loading(true);
+  try {
+    const player = await apiFetch(`/players/${playerId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: !currentlyActive }),
+    });
+    // Update in currentGame
+    const p = currentGame.players.find(p => p.id === playerId);
+    if (p) p.is_active = player.is_active;
+    // Re-fetch scoreboard for updated totals display
+    const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
+    renderGameScreen(currentGame, board);
+  } catch(e) { showError('add-player-error', e.message); }
+  finally { loading(false); }
+}
+
+async function addPlayer() {
+  const name = document.getElementById('new-player-name').value.trim();
+  if (!name) { showError('add-player-error', 'Enter a player name.'); return; }
+  loading(true);
+  try {
+    const player = await apiFetch(`/games/${currentGame.id}/players`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+    player.is_active = true;
+    currentGame.players.push(player);
+    document.getElementById('new-player-name').value = '';
+    const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
+    renderGameScreen(currentGame, board);
+  } catch(e) { showError('add-player-error', e.message); }
+  finally { loading(false); }
+}
+
+// ── Scoreboard ─────────────────────────────────────────
+function renderScoreboard(players, board) {
+  const hands  = board.hands;
+  const totals = board.totals;
+  const thead  = document.getElementById('score-thead');
+  const tbody  = document.getElementById('score-tbody');
+  const tfoot  = document.getElementById('score-tfoot');
+  const empty  = document.getElementById('scoreboard-empty');
+  const table  = document.getElementById('score-table');
+
+  thead.innerHTML = `<tr>
+    <th style="text-align:left">Hand</th>
+    ${players.map(p => `<th class="player-th ${p.is_active ? '' : 'inactive-th'}">${esc(p.name)}${p.is_active ? '' : ' ·'}</th>`).join('')}
+  </tr>`;
+
+  if (!hands.length) {
+    tbody.innerHTML = ''; tfoot.innerHTML = '';
+    empty.style.display = 'block'; table.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none'; table.style.display = '';
+
+  tbody.innerHTML = hands.map(h => {
+    const byPlayer = {};
+    (h.entries || []).forEach(e => { byPlayer[e.player_id] = e; });
+    const rowId = `expand-${h.id}`;
+    const betterBadge = h.better_game ? `<span class="better-badge">2×</span>` : '';
+    const cells = players.map(p => {
+      const e = byPlayer[p.id];
+      if (!e) return `<td style="color:var(--text-mute)">—</td>`;
+      const pts = e.points;
+      const icon = e.is_winner ? ' <span class="winner-icon">👑</span>' : '';
+      return `<td class="${ptsClass(pts)}">${pts > 0 ? '+'+pts : pts}${icon}</td>`;
+    }).join('');
+    return `
+      <tr class="clickable-row" onclick="toggleHandDetail('${rowId}')">
+        <td class="hand-label">Hand ${h.hand_number}${betterBadge} <span style="color:var(--text-mute);font-size:10px">▸</span></td>
+        ${cells}
+      </tr>
+      <tr class="hand-expand-row" id="${rowId}">
+        <td colspan="${players.length + 1}">${renderHandDetail(h, players)}</td>
+      </tr>`;
+  }).join('');
+
+  const maxTotal = Math.max(...players.map(p => totals[p.id] ?? 0));
+  const totalCells = players.map(p => {
+    const t = totals[p.id] ?? 0;
+    const cls = [ptsClass(t), t === maxTotal && t > 0 ? 'total-best' : ''].filter(Boolean).join(' ');
+    return `<td class="${cls}">${t > 0 ? '+'+t : t}</td>`;
+  }).join('');
+  tfoot.innerHTML = `<tr>
+    <td style="text-align:left;color:var(--text-dim);font-size:12px;font-family:'DM Mono',monospace">TOTAL</td>
+    ${totalCells}
+  </tr>`;
+}
+
+function renderHandDetail(hand, players) {
+  const byPlayer = {};
+  (hand.entries || []).forEach(e => { byPlayer[e.player_id] = e; });
+  const betterNote = hand.better_game ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">★ Better Game — points doubled</div>` : '';
+  const cards = players.map(p => {
+    const e = byPlayer[p.id];
+    if (!e) return `<div class="hand-detail-card" style="opacity:.3"><div class="hd-name">${esc(p.name)}</div><div class="hd-row"><span>Not in hand</span></div></div>`;
+    const pts = e.points;
+    return `
+      <div class="hand-detail-card">
+        <div class="hd-name">${esc(p.name)} ${e.is_winner ? '👑' : ''}</div>
+        <div class="hd-row"><span>Status</span><span>${e.status.charAt(0).toUpperCase()+e.status.slice(1)}</span></div>
+        <div class="hd-row"><span>Maal</span><span>${e.maal}</span></div>
+        <div class="hd-row"><span>Points</span><span class="${ptsClass(pts)}">${pts > 0 ? '+'+pts : pts}</span></div>
+      </div>`;
+  }).join('');
+  return `${betterNote}<div class="hand-detail-grid">${cards}</div>`;
+}
+
+function toggleHandDetail(rowId) {
+  const row = document.getElementById(rowId);
+  if (row) row.classList.toggle('open');
+}
+
+// ── Add Hand ───────────────────────────────────────────
+function showAddHand() {
+  if (!currentGame) return;
+  const activePlayers = currentGame.players.filter(p => p.is_active);
+  if (activePlayers.length < 3) {
+    alert('At least 3 players must be active to start a hand.');
+    return;
+  }
+  handEntries = activePlayers.map(p => ({
+    player_id: p.id, name: p.name, status: 'unseen', maal: 0, is_winner: false,
+  }));
+  isBetterGame = false;
+  renderBetterGameToggle();
+  renderHandEntryTable();
+  document.getElementById('add-hand-error').classList.remove('visible');
+  document.getElementById('add-hand-success').classList.remove('visible');
+  showScreen('screen-add-hand');
+}
+
+function toggleBetterGame() {
+  isBetterGame = !isBetterGame;
+  renderBetterGameToggle();
+}
+
+function renderBetterGameToggle() {
+  const el = document.getElementById('better-game-toggle');
+  const cb = document.getElementById('bg-checkbox');
+  el.classList.toggle('active', isBetterGame);
+  cb.textContent = isBetterGame ? '✓' : '';
+}
+
+function renderHandEntryTable() {
+  const tbody = document.getElementById('hand-entry-tbody');
+  tbody.innerHTML = handEntries.map((e, i) => `
+    <tr id="entry-row-${i}" class="${e.is_winner ? 'winner-row' : ''}">
+      <td class="player-cell">${SUITS[i % SUITS.length]} ${esc(e.name)}</td>
+      <td>
+        <div class="winner-radio">
+          <input type="radio" name="winner" id="win-${i}" value="${i}" ${e.is_winner ? 'checked' : ''} onchange="setWinner(${i})">
+          <label for="win-${i}" title="Set as winner">♔</label>
+        </div>
+      </td>
+      <td>
+        <div class="status-group">
+          ${['seen','unseen','duplee'].map(s => {
+            const disabled = e.is_winner && s === 'unseen';
+            return `<button class="status-btn ${e.status === s ? 'active-'+s : ''} ${disabled ? 'status-disabled' : ''}"
+              ${disabled ? 'disabled title="Winner cannot be Unseen"' : `onclick="setStatus(${i}, '${s}')"`}>${s}</button>`;
+          }).join('')}
+        </div>
+      </td>
+      <td>
+        <input type="number" class="maal-input" value="${e.maal}" min="0"
+          id="maal-${i}" onchange="setMaal(${i}, this.value)" oninput="setMaal(${i}, this.value)">
+      </td>
+    </tr>`).join('');
+}
+
+function setWinner(idx) {
+  handEntries.forEach((e, i) => {
+    e.is_winner = (i === idx);
+    if (i === idx && e.status === 'unseen') e.status = 'seen';
+  });
+  renderHandEntryTable();
+}
+
+function setStatus(idx, status) {
+  if (status === 'unseen' && handEntries[idx].is_winner) return;
+  handEntries[idx].status = status;
+  renderHandEntryTable();
+}
+
+function setMaal(idx, val) {
+  const n = parseInt(val, 10);
+  handEntries[idx].maal = isNaN(n) || n < 0 ? 0 : n;
+}
+
+function goToCurrentGame() {
+  if (currentGame) openGame(currentGame.id);
+  else showScreen('screen-home');
+}
+
+async function finalizeHand() {
+  handEntries.forEach((e, i) => {
+    const inp = document.getElementById(`maal-${i}`);
+    if (inp) { const n = parseInt(inp.value, 10); e.maal = isNaN(n) || n < 0 ? 0 : n; }
+  });
+  if (!handEntries.some(e => e.is_winner)) {
+    showError('add-hand-error', 'Please select a winner.'); return;
+  }
+  loading(true);
+  try {
+    await apiFetch(`/games/${currentGame.id}/hands`, {
+      method: 'POST',
+      body: JSON.stringify({
+        better_game: isBetterGame,
+        entries: handEntries.map(e => ({
+          player_id: e.player_id, status: e.status, maal: e.maal, is_winner: e.is_winner,
+        })),
+      }),
+    });
+    showSuccess('add-hand-success', `✓ Hand finalized${isBetterGame ? ' (Better Game — 2×)' : ''}!`);
+    setTimeout(() => goToCurrentGame(), 800);
+  } catch(e) { showError('add-hand-error', e.message); }
+  finally { loading(false); }
+}
+</script>
+</body>
+</html>
