@@ -91,12 +91,21 @@ header {
   display: flex; align-items: center; gap: 8px; flex-shrink: 0;
 }
 
-/* ── Theme toggle pill ── */
+/* ── Theme footer ── */
+.theme-footer {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  display: flex; justify-content: center; padding: 10px 16px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, var(--bg) 40%);
+  pointer-events: none; z-index: 50;
+}
 .theme-toggle {
+  pointer-events: all;
   display: flex; align-items: center; gap: 0;
-  background: var(--surface2); border: 1px solid var(--border);
+  background: var(--surface); border: 1px solid var(--border);
   border-radius: 20px; padding: 3px; cursor: pointer;
   transition: border-color .2s; min-height: 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,.3);
 }
 .theme-toggle:hover { border-color: var(--gold-dim); }
 .theme-option {
@@ -542,7 +551,7 @@ body::before { display: none; }
 
 <div id="app">
   <header>
-    <div style="width:90px;flex-shrink:0"></div>
+    <div style="flex:1"></div>
     <div class="header-logo">
       <div class="logo">Marriage</div>
       <div class="logo-suits">
@@ -551,10 +560,6 @@ body::before { display: none; }
       <div class="logo-sub">Points Calculator</div>
     </div>
     <div class="header-actions">
-      <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Toggle light/dark theme">
-        <span class="theme-option" id="theme-opt-dark">🌙 Dark</span>
-        <span class="theme-option" id="theme-opt-light">☀️ Light</span>
-      </button>
       <div id="user-badge-wrap"></div>
     </div>
   </header>
@@ -626,10 +631,7 @@ body::before { display: none; }
     <div class="breadcrumb"><a onclick="showScreen('screen-home')">Home</a> › <span id="game-breadcrumb">Game</span></div>
     <div class="card-header">
       <h2 style="margin:0"><span class="suit">♥</span> <span id="game-title-text">Game</span></h2>
-      <div style="display:flex;gap:8px">
-        <button class="btn-secondary btn-sm" id="share-btn" onclick="showShareDialog()">Share</button>
-        <button class="btn-primary btn-sm" id="add-hand-btn" onclick="showAddHand()">+ Hand</button>
-      </div>
+      <button class="btn-secondary btn-sm" id="share-btn" onclick="showShareDialog()">Share</button>
     </div>
     <div class="card" style="margin-bottom:12px" data-suit="♣">
       <div class="card-header">
@@ -646,7 +648,10 @@ body::before { display: none; }
       </div>
     </div>
     <div class="card" data-suit="♠">
-      <h3>Scoreboard</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3 style="margin:0">Scoreboard</h3>
+        <button class="btn-primary btn-sm" id="add-hand-btn" onclick="showAddHand()">+ Add Hand</button>
+      </div>
       <div class="scoreboard-wrap">
         <table class="score-table">
           <thead id="score-thead"></thead>
@@ -733,6 +738,13 @@ body::before { display: none; }
       <button class="btn-danger" onclick="confirmDelete()">Delete</button>
     </div>
   </div>
+</div>
+
+<div class="theme-footer">
+  <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Toggle light/dark theme">
+    <span class="theme-option" id="theme-opt-dark">🌙 Dark</span>
+    <span class="theme-option" id="theme-opt-light">☀️ Light</span>
+  </button>
 </div>
 
 <script>
