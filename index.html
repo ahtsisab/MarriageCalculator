@@ -96,16 +96,24 @@ header {
   display: flex; align-items: center; gap: 8px; flex-shrink: 0;
 }
 
-/* ── Theme toggle ── */
+/* ── Theme toggle pill ── */
 .theme-toggle {
-  background: var(--surface2); border: 1px solid var(--border); border-radius: 20px;
-  padding: 6px 10px; cursor: pointer; font-size: 14px; line-height: 1;
-  transition: all .15s; min-height: 0;
-  display: flex; align-items: center; gap: 5px;
-  font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim);
-  letter-spacing: .5px;
+  display: flex; align-items: center; gap: 0;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px; cursor: pointer;
+  transition: border-color .2s; min-height: 0;
 }
-.theme-toggle:hover { border-color: var(--gold-dim); color: var(--text); }
+.theme-toggle:hover { border-color: var(--gold-dim); }
+.theme-option {
+  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .5px;
+  text-transform: uppercase; padding: 5px 10px; border-radius: 16px;
+  color: var(--text-mute); transition: all .2s; white-space: nowrap;
+  display: flex; align-items: center; gap: 4px;
+}
+.theme-option.active {
+  background: var(--gold); color: #1a1410; font-weight: 500;
+}
+[data-theme="light"] .theme-option.active { color: #fff; }
 
 /* ── User badge in header ── */
 .user-badge {
@@ -438,6 +446,87 @@ label {
 .join-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .join-row input { flex: 1; font-family: 'DM Mono', monospace !important; letter-spacing: 4px; text-transform: uppercase; font-size: 18px !important; }
 
+
+body::before {
+  content: '♠ ♥ ♣ ♦';
+  position: fixed; bottom: -20px; right: -10px;
+  font-size: 120px; line-height: 1;
+  color: var(--gold); opacity: .025;
+  pointer-events: none; z-index: 0;
+  font-family: serif; letter-spacing: -10px;
+  transform: rotate(-15deg);
+  transition: opacity .2s;
+}
+[data-theme="light"] body::before { opacity: .04; }
+
+/* ── Section suit divider ── */
+.suit-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 18px 0 14px; color: var(--text-mute);
+  font-size: 11px; letter-spacing: 6px;
+}
+.suit-divider::before, .suit-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ── Card corner pip decoration on .card ── */
+.card { position: relative; overflow: hidden; }
+.card::after {
+  content: attr(data-suit);
+  position: absolute; top: 8px; right: 10px;
+  font-size: 22px; color: var(--border); pointer-events: none;
+  line-height: 1; transition: color .2s;
+}
+[data-theme="light"] .card::after { color: var(--border); }
+
+/* ── Marriage terminology badge ── */
+.term-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  text-transform: uppercase; letter-spacing: 1px;
+  padding: 2px 8px; border-radius: 3px;
+  vertical-align: middle;
+}
+.term-seen   { background: rgba(39,174,96,.12);  color: var(--green-lt); border: 1px solid rgba(39,174,96,.25); }
+.term-unseen { background: rgba(192,57,43,.12);  color: var(--red-lt);   border: 1px solid rgba(192,57,43,.25); }
+.term-duplee { background: rgba(201,168,76,.1);  color: var(--gold);     border: 1px solid var(--gold-dim); }
+
+/* ── Logo suit pip row ── */
+.logo-suits {
+  font-size: 13px; letter-spacing: 8px; margin-top: 5px;
+  opacity: .35; user-select: none;
+}
+.logo-suits .s { color: #888; }
+.logo-suits .h { color: var(--red-lt); }
+.logo-suits .d { color: var(--red-lt); }
+.logo-suits .c { color: #888; }
+
+/* ── Auth card: subtle suit corner art ── */
+#screen-auth .card::before {
+  content: '♥ Marriage ♣';
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  font-family: 'Playfair Display', serif; font-size: 10px;
+  letter-spacing: 3px; color: var(--text-mute); padding: 6px 0 0;
+  white-space: nowrap; pointer-events: none;
+}
+
+/* ── Game item: left suit accent ── */
+.game-item { border-left: 3px solid transparent; }
+.game-item:hover { border-left-color: var(--gold-dim); }
+.game-item.joined-item { border-left-color: rgba(39,174,96,.4); }
+
+/* ── Hand entry card: suit pip top-right ── */
+.entry-card { position: relative; }
+.entry-suit-pip {
+  position: absolute; top: 10px; right: 11px;
+  font-size: 13px; opacity: .2; pointer-events: none; line-height: 1;
+}
+.entry-suit-pip.red { color: var(--red-lt); opacity: .25; }
+
+/* ── Score table: alternating row tint ── */
+.score-table tbody tr.clickable-row:nth-child(4n+1) td { background: rgba(201,168,76,.015); }
+.score-table tbody tr.clickable-row:nth-child(4n+3) td { background: rgba(201,168,76,.008); }
+
 </style>
 </head>
 <body>
@@ -448,20 +537,26 @@ label {
 
 <div id="app">
   <header>
-    <div style="width:80px;flex-shrink:0"></div><!-- spacer -->
+    <div style="width:90px;flex-shrink:0"></div>
     <div class="header-logo">
       <div class="logo">Marriage</div>
+      <div class="logo-suits">
+        <span class="s">♠</span><span class="h">♥</span><span class="c">♣</span><span class="d">♦</span>
+      </div>
       <div class="logo-sub">Points Calculator</div>
     </div>
     <div class="header-actions">
-      <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Toggle theme">☀️</button>
+      <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Toggle light/dark theme">
+        <span class="theme-option" id="theme-opt-dark">🌙 Dark</span>
+        <span class="theme-option" id="theme-opt-light">☀️ Light</span>
+      </button>
       <div id="user-badge-wrap"></div>
     </div>
   </header>
 
   <!-- AUTH SCREEN -->
   <div id="screen-auth" class="screen active">
-    <div class="card" style="max-width:420px;margin:0 auto">
+    <div class="card" data-suit="♥" style="max-width:420px;margin:0 auto;padding-top:28px">
       <div class="auth-tabs">
         <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Sign In</button>
         <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">New User</button>
@@ -531,7 +626,7 @@ label {
         <button class="btn-primary btn-sm" id="add-hand-btn" onclick="showAddHand()">+ Hand</button>
       </div>
     </div>
-    <div class="card" style="margin-bottom:12px">
+    <div class="card" style="margin-bottom:12px" data-suit="♣">
       <div class="card-header">
         <h3 style="margin:0">Players</h3>
         <span id="player-toggle-hint" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-mute);text-transform:uppercase;letter-spacing:1px">tap to toggle</span>
@@ -545,7 +640,7 @@ label {
         <div id="add-player-error" class="error-msg" style="margin-top:8px"></div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" data-suit="♠">
       <h3>Scoreboard</h3>
       <div class="scoreboard-wrap">
         <table class="score-table">
@@ -567,7 +662,7 @@ label {
       <a id="hand-game-breadcrumb" onclick="goToCurrentGame()">Game</a> › Add Hand
     </div>
     <h2><span class="suit">♦</span> Add Hand</h2>
-    <div class="card">
+    <div class="card" data-suit="♦">
       <div id="better-game-toggle" class="better-game-toggle" onclick="toggleBetterGame()">
         <div class="bg-checkbox" id="bg-checkbox"></div>
         <div>
@@ -575,6 +670,7 @@ label {
           <div class="bg-desc">All points doubled for this hand</div>
         </div>
       </div>
+
       <div class="hand-entries" id="hand-entries"></div>
       <div id="add-hand-error" class="error-msg"></div>
       <div id="add-hand-success" class="success-msg"></div>
@@ -650,7 +746,8 @@ const SUITS = ['♠','♥','♦','♣','♠','♥'];
 // ── Theme ─────────────────────────────────────────────────────────────────────
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀️' : '🌙';
+  document.getElementById('theme-opt-dark').classList.toggle('active', theme === 'dark');
+  document.getElementById('theme-opt-light').classList.toggle('active', theme === 'light');
   localStorage.setItem('mc-theme', theme);
 }
 function toggleTheme() {
@@ -769,7 +866,7 @@ async function loadGameList() {
         ? `<button class="game-item-delete" title="Delete" onclick="event.stopPropagation(); promptDelete(${g.id}, '${esc(g.name)}')">🗑</button>`
         : '';
       return `
-        <div class="game-item" onclick="openGame(${g.id})">
+        <div class="game-item ${g.is_owner ? '' : 'joined-item'}" onclick="openGame(${g.id})">
           <div>
             <div class="game-item-name">${esc(g.name)}</div>
             <div class="game-item-meta">${fmtDate(g.created_at)} · ${g.hand_count} hand${g.hand_count !== 1 ? 's' : ''}</div>
@@ -984,10 +1081,13 @@ function renderBetterGameToggle() {
   document.getElementById('bg-checkbox').textContent = isBetterGame ? '✓' : '';
 }
 function renderHandEntries() {
+  const PIPS = ['♠','♥','♦','♣','♠','♥'];
+  const RED  = [false, true, true, false, false, true];
   document.getElementById('hand-entries').innerHTML = handEntries.map((e, i) => `
     <div class="entry-card ${e.is_winner ? 'winner-card' : ''}">
+      <span class="entry-suit-pip ${RED[i%4] ? 'red' : ''}">${PIPS[i%PIPS.length]}</span>
       <div class="entry-card-top">
-        <div class="entry-player-name"><span class="entry-player-suit">${SUITS[i%SUITS.length]}</span>${esc(e.name)}</div>
+        <div class="entry-player-name"><span class="entry-player-suit">${PIPS[i%PIPS.length]}</span>${esc(e.name)}</div>
         <div class="winner-toggle">
           <input type="radio" name="winner" id="win-${i}" ${e.is_winner ? 'checked' : ''} onchange="setWinner(${i})">
           <label class="winner-toggle-label" for="win-${i}">${e.is_winner ? '👑 Winner' : 'Winner?'}</label>
