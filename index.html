@@ -658,7 +658,6 @@ body::before { display: none; }
     <div class="card" style="margin-bottom:12px" data-suit="♣">
       <div class="card-header">
         <h3 style="margin:0">Players</h3>
-        <span id="player-toggle-hint" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-mute);text-transform:uppercase;letter-spacing:1px">tap to toggle</span>
       </div>
       <div id="player-roster" class="player-roster"></div>
       <div id="add-player-section">
@@ -854,6 +853,7 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
   if (id === 'screen-home') loadGameList();
+  if (id !== 'screen-game') _stopAutoRefresh();
 }
 function loading(on) { document.getElementById('loading-overlay').classList.toggle('visible', on); }
 function showError(elId, msg) {
@@ -1038,12 +1038,12 @@ async function openGame(gameId) {
 
     // Show/hide owner-only controls
     document.getElementById('add-hand-btn').style.display       = isOwner ? '' : 'none';
-    document.getElementById('player-toggle-hint').style.display = isOwner && game.players.length > 3 ? '' : 'none';
     document.getElementById('add-player-section').style.display = isOwner && game.players.length < 6 ? 'block' : 'none';
 
     renderPlayerRoster(game.players, isOwner, board);
     renderScoreboard(game.players, board);
     showScreen('screen-game');
+    _startAutoRefresh();
   } catch(e) { alert('Could not load game: ' + e.message); }
   finally { loading(false); }
 }
@@ -1063,7 +1063,7 @@ function renderPlayerRoster(players, isOwner, board) {
       ${isOwner ? `
         <button class="chip-action" onclick="startRenamePlayer(${p.id}, '${esc(p.name)}')" title="Rename">✏️</button>
         <button class="chip-toggle" onclick="togglePlayerActive(${p.id}, ${p.is_active})"
-          title="${p.is_active ? 'Deactivate' : 'Activate'}">${p.is_active ? '●' : '○'}</button>
+          title="${p.is_active ? 'Deactivate' : 'Activate'}">${p.is_active ? '✓' : '–'}</button>
         ${canDelete ? `<button class="chip-action chip-delete" onclick="doDeletePlayer(${p.id}, '${esc(p.name)}')" title="Delete">✕</button>` : ''}
       ` : ''}
     </div>`;
@@ -1114,8 +1114,6 @@ async function doDeletePlayer(pid, name) {
     await _refreshGameView();
     document.getElementById('add-player-section').style.display =
       currentGame.is_owner && currentGame.players.length < 6 ? 'block' : 'none';
-    document.getElementById('player-toggle-hint').style.display =
-      currentGame.is_owner && currentGame.players.length > 3 ? '' : 'none';
   } catch(e) { alert('Could not delete: ' + e.message); }
   finally { loading(false); }
 }
@@ -1139,17 +1137,30 @@ async function addPlayer() {
 async function refreshScoreboard() {
   if (!currentGame) return;
   const btn = document.getElementById('refresh-btn');
-  btn.style.opacity = '.4';
-  btn.style.pointerEvents = 'none';
+  if (btn) { btn.style.opacity = '.4'; btn.style.pointerEvents = 'none'; }
   try {
     const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
     renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
     renderScoreboard(currentGame.players, board);
-  } catch(e) { alert('Could not refresh: ' + e.message); }
+  } catch(e) { /* silent on auto-refresh; manual refresh shows alert below */ throw e; }
   finally {
-    btn.style.opacity = '';
-    btn.style.pointerEvents = '';
+    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
   }
+}
+
+let _autoRefreshTimer = null;
+
+function _startAutoRefresh() {
+  _stopAutoRefresh();
+  _autoRefreshTimer = setInterval(async () => {
+    if (currentGame && document.getElementById('screen-game').classList.contains('active')) {
+      try { await refreshScoreboard(); } catch(_) { /* silent */ }
+    }
+  }, 2 * 60 * 1000);
+}
+
+function _stopAutoRefresh() {
+  if (_autoRefreshTimer) { clearInterval(_autoRefreshTimer); _autoRefreshTimer = null; }
 }
 
 // ── Scoreboard ────────────────────────────────────────────────────────────────
@@ -1181,7 +1192,7 @@ function renderScoreboard(players, board) {
     }).join('');
     return `
       <tr class="clickable-row" onclick="toggleHandDetail('${rowId}')">
-        <td class="hand-label">H${h.hand_number}${bb} <span style="color:var(--text-mute);font-size:9px">▸</span></td>${cells}
+        <td class="hand-label">${h.hand_number}${bb} <span style="color:var(--text-mute);font-size:9px">▸</span></td>${cells}
       </tr>
       <tr class="hand-expand-row" id="${rowId}">
         <td colspan="${players.length+1}">${renderHandDetail(h, players)}</td>
@@ -1262,6 +1273,7 @@ function renderHandEntries() {
 }
 function setWinner(idx) {
   handEntries.forEach((e, i) => { e.is_winner = i===idx; if (i===idx && e.status==='unseen') e.status='seen'; });
+  document.getElementById('add-hand-error').classList.remove('visible');
   renderHandEntries();
 }
 function setStatus(idx, s) {
