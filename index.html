@@ -304,11 +304,22 @@ label {
 }
 .player-chip.inactive { opacity: .4; border-style: dashed; }
 .player-chip .chip-name { font-family: 'Lora', serif; font-size: 15px; }
-.player-chip .chip-toggle {
-  background: none; border: none; font-size: 14px; padding: 0 2px;
-  color: var(--text-dim); cursor: pointer; letter-spacing: 0; text-transform: none;
-  transition: color .12s; min-height: 0;
+.player-chip .chip-toggle-wrap {
+  display: flex; align-items: center; margin-left: 2px;
 }
+.chip-switch {
+  position: relative; width: 30px; height: 17px; flex-shrink: 0;
+  background: var(--border); border-radius: 9px;
+  cursor: pointer; border: none; padding: 0; transition: background .2s; min-height: 0;
+  display: block;
+}
+.chip-switch.on { background: var(--green); }
+.chip-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.chip-switch.on::after { transform: translateX(13px); }
 .player-chip .chip-action {
   background: none; border: none; font-size: 11px; padding: 0 2px;
   color: var(--text-mute); cursor: pointer; letter-spacing: 0; text-transform: none;
@@ -1130,20 +1141,28 @@ async function openGame(gameId) {
 
 // ── Players ───────────────────────────────────────────────────────────────────
 function renderPlayerRoster(players, isOwner, board) {
-  // Players who have appeared in at least one hand entry
   const playedIds = new Set(
     (board?.hands || []).flatMap(h => (h.entries || []).map(e => e.player_id))
   );
 
+  const activeCount = players.filter(p => p.is_active).length;
+
   document.getElementById('player-roster').innerHTML = players.map(p => {
-    const canDelete = isOwner && !playedIds.has(p.id);
+    const canDelete    = isOwner && !playedIds.has(p.id);
+    // Hide the deactivate switch if this player is active and we're at the minimum
+    const canDeactivate = p.is_active ? activeCount > 3 : true;
+
     return `
     <div class="player-chip ${p.is_active ? '' : 'inactive'}">
       <span class="chip-name">${esc(p.name)}</span>
       ${isOwner ? `
         <button class="chip-action" onclick="startRenamePlayer(${p.id}, '${esc(p.name)}')" title="Rename">✏️</button>
-        <button class="chip-toggle" onclick="togglePlayerActive(${p.id}, ${p.is_active})"
-          title="${p.is_active ? 'Deactivate' : 'Activate'}">${p.is_active ? '✓' : '–'}</button>
+        ${canDeactivate ? `
+          <div class="chip-toggle-wrap">
+            <button class="chip-switch ${p.is_active ? 'on' : ''}"
+              onclick="togglePlayerActive(${p.id}, ${p.is_active})"
+              title="${p.is_active ? 'Deactivate' : 'Activate'}"></button>
+          </div>` : ''}
         ${canDelete ? `<button class="chip-action chip-delete" onclick="doDeletePlayer(${p.id}, '${esc(p.name)}')" title="Delete">✕</button>` : ''}
       ` : ''}
     </div>`;
