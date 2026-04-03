@@ -354,7 +354,7 @@ def route_admin_overview():
     cur  = conn.cursor()
 
     cur.execute("""
-        SELECT u.id, u.name, u.created_at,
+        SELECT u.id, ANY_VALUE(u.name) as name, ANY_VALUE(u.created_at) as created_at,
                COUNT(DISTINCT g.id) AS game_count,
                COUNT(DISTINCT h.id) AS hand_count
         FROM users u
