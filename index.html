@@ -454,6 +454,16 @@ label {
 .member-item { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
 .member-item::before { content: '◈'; color: var(--gold-dim); font-size: 10px; }
 
+/* ── Player name suggestion pills ── */
+.suggestion-pill {
+  font-family: 'Lora', serif; font-size: 13px;
+  padding: 5px 12px; border-radius: 20px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim);
+  transition: all .15s; white-space: nowrap;
+}
+.suggestion-pill:hover  { border-color: var(--gold-dim); color: var(--text); background: rgba(201,168,76,.06); }
+.suggestion-pill.used   { opacity: .3; pointer-events: none; }
+
 /* ── Join input row ── */
 .join-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .join-row input { flex: 1; font-family: 'DM Mono', monospace !important; letter-spacing: 4px; text-transform: uppercase; font-size: 18px !important; }
@@ -652,6 +662,10 @@ body::before { display: none; }
       </div>
       <div class="field" id="player-names-section" style="display:none">
         <label>Player Names</label>
+        <div id="suggestion-pills" style="display:none;margin-bottom:10px">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-mute);margin-bottom:6px">Previous players</div>
+          <div id="suggestion-pill-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
         <div class="player-inputs" id="player-inputs"></div>
       </div>
       <div id="new-game-error" class="error-msg"></div>
@@ -851,6 +865,7 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
   if (id === 'screen-home') loadGameList();
+  if (id === 'screen-new-game') loadPlayerSuggestions();
   if (id !== 'screen-game') _stopAutoRefresh();
 }
 function loading(on) { document.getElementById('loading-overlay').classList.toggle('visible', on); }
@@ -996,10 +1011,60 @@ function setPlayerCount(n) {
   document.getElementById('player-inputs').innerHTML = Array.from({length: n}, (_, i) => `
     <div class="player-input-row">
       <span class="suit-badge">${SUITS[i]}</span>
-      <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off">
+      <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off"
+        oninput="refreshSuggestionPills()">
     </div>`).join('');
+  refreshSuggestionPills();
   document.getElementById('pname-0').focus();
 }
+// ── Player name suggestion pills ──────────────────────────────────────────────
+let _playerSuggestions = [];
+
+async function loadPlayerSuggestions() {
+  try { _playerSuggestions = await apiFetch('/players/suggestions'); }
+  catch(_) { _playerSuggestions = []; }
+  refreshSuggestionPills();
+}
+
+function refreshSuggestionPills() {
+  const container = document.getElementById('suggestion-pills');
+  const pillList  = document.getElementById('suggestion-pill-list');
+  if (!container || !pillList || !_playerSuggestions.length) {
+    if (container) container.style.display = 'none';
+    return;
+  }
+
+  // Names currently in any input
+  const used = new Set(
+    Array.from({length: selectedPlayerCount}, (_, i) =>
+      (document.getElementById(`pname-${i}`)?.value || '').trim().toLowerCase()
+    ).filter(Boolean)
+  );
+
+  pillList.innerHTML = _playerSuggestions.map(name => {
+    const isUsed = used.has(name.toLowerCase());
+    return `<button class="suggestion-pill ${isUsed ? 'used' : ''}"
+      onclick="pickSuggestionPill('${esc(name)}')">${esc(name)}</button>`;
+  }).join('');
+
+  container.style.display = 'block';
+}
+
+function pickSuggestionPill(name) {
+  // Fill the first empty input
+  for (let i = 0; i < selectedPlayerCount; i++) {
+    const inp = document.getElementById(`pname-${i}`);
+    if (inp && !inp.value.trim()) {
+      inp.value = name;
+      refreshSuggestionPills();
+      // Focus next empty
+      const next = document.getElementById(`pname-${i + 1}`);
+      if (next && !next.value.trim()) next.focus();
+      return;
+    }
+  }
+}
+
 async function createGame() {
   const name = document.getElementById('new-game-name').value.trim();
   if (!name) { showError('new-game-error', 'Please enter a game name.'); return; }

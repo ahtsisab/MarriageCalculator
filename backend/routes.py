@@ -234,6 +234,23 @@ def route_game_members(game_id):
     return jsonify(get_game_members(game_id))
 
 
+@api.get("/players/suggestions")
+def route_player_suggestions():
+    if (e := _require_auth()): return e
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT DISTINCT p.name
+        FROM players p
+        JOIN games g ON g.id = p.game_id
+        WHERE g.user_id = %s
+        ORDER BY p.name
+    """, (_uid(),))
+    names = [r["name"] for r in cur.fetchall()]
+    cur.close(); conn.close()
+    return jsonify(names)
+
+
 # ── Players ────────────────────────────────────────────────────────────────────
 
 @api.post("/games/<int:game_id>/players")
