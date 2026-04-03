@@ -13,6 +13,7 @@ from game_model import (create_game, list_games, get_game, get_scoreboard,
                          get_game_members, user_can_access)
 from hand_model import finalize_hand, get_hand
 from user_model import register, login
+from database import get_connection
 
 api = Blueprint("api", __name__, url_prefix="/api")
 
@@ -277,3 +278,52 @@ def route_get_hand(hand_id):
     hand = get_hand(hand_id)
     if not hand: return _err("Hand not found.", 404)
     return jsonify(hand)
+
+
+# ── Admin ──────────────────────────────────────────────────────────────────────
+
+def _require_admin():
+    """Check the request carries the admin password as a Bearer token."""
+    admin_pw = os.environ.get("ADMIN_PASSWORD", "")
+    if not admin_pw:
+        return _err("Admin access not configured.", 503)
+    auth = request.headers.get("Authorization", "")
+    if auth != f"Bearer {admin_pw}":
+        return _err("Unauthorized.", 401)
+
+@api.get("/admin/overview")
+def route_admin_overview():
+    if (e := _require_admin()): return e
+
+    conn = get_connection()
+    cur  = conn.cursor()
+
+    cur.execute("""
+        SELECT u.id, u.name, u.created_at,
+               COUNT(DISTINCT g.id) AS game_count,
+               COUNT(DISTINCT h.id) AS hand_count
+        FROM users u
+        LEFT JOIN games g ON g.user_id = u.id
+        LEFT JOIN hands h ON h.game_id = g.id
+        GROUP BY u.id
+        ORDER BY u.created_at DESC
+    """)
+    users = [dict(r) for r in cur.fetchall()]
+
+    cur.execute("""
+        SELECT g.id, g.name, g.created_at, g.join_code,
+               u.name AS owner_name,
+               COUNT(DISTINCT h.id) AS hand_count,
+               COUNT(DISTINCT gm.user_id) AS member_count
+        FROM games g
+        LEFT JOIN users u ON u.id = g.user_id
+        LEFT JOIN hands h ON h.game_id = g.id
+        LEFT JOIN game_members gm ON gm.game_id = g.id
+        GROUP BY g.id
+        ORDER BY g.created_at DESC
+    """)
+    games = [dict(r) for r in cur.fetchall()]
+
+    cur.close()
+    conn.close()
+    return jsonify({"users": users, "games": games})

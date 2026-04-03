@@ -69,13 +69,13 @@ body {
 
 /* ── Header ── */
 header {
-  display: flex; align-items: center; justify-content: space-between;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
   padding: 18px 0 16px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 20px;
-  gap: 10px;
 }
-.header-logo { text-align: center; flex: 1; }
+.header-logo { text-align: center; }
 .logo {
   font-family: 'Playfair Display', serif;
   font-size: clamp(22px, 6vw, 40px); font-weight: 900;
@@ -88,7 +88,8 @@ header {
   text-transform: uppercase; color: var(--text-dim); margin-top: 3px;
 }
 .header-actions {
-  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; gap: 8px;
 }
 
 /* ── Theme footer ── */
@@ -537,7 +538,22 @@ body::before { display: none; }
 }
 .entry-suit-pip.red { color: var(--red-lt); opacity: .25; }
 
-/* ── Score table: alternating row tint ── */
+/* ── Admin table ── */
+.admin-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.admin-table { width: 100%; border-collapse: collapse; min-width: 400px; font-family: 'DM Mono', monospace; font-size: 12px; }
+.admin-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--border); color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+.admin-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.admin-table tr:last-child td { border-bottom: none; }
+.admin-table tr:hover td { background: rgba(201,168,76,.03); }
+.admin-code { font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 3px; color: var(--gold); background: rgba(201,168,76,.08); border: 1px solid var(--gold-dim); border-radius: 4px; padding: 2px 6px; }
+.admin-num { text-align: center; color: var(--text-dim); }
+.admin-name { color: var(--text); font-weight: 500; }
+
+/* ── Admin entry point in user badge ── */
+.admin-link { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-mute); cursor: pointer; padding: 4px 6px; border-radius: 4px; border: none; background: none; text-transform: uppercase; letter-spacing: 1px; transition: color .15s; min-height: 0; }
+.admin-link:hover { color: var(--gold-dim); }
+
+
 .score-table tbody tr.clickable-row:nth-child(4n+1) td { background: rgba(201,168,76,.015); }
 .score-table tbody tr.clickable-row:nth-child(4n+3) td { background: rgba(201,168,76,.008); }
 
@@ -551,7 +567,6 @@ body::before { display: none; }
 
 <div id="app">
   <header>
-    <div style="flex:1"></div>
     <div class="header-logo">
       <div class="logo">Marriage</div>
       <div class="logo-suits">
@@ -689,10 +704,58 @@ body::before { display: none; }
         <button class="btn-ghost" onclick="goToCurrentGame()">Cancel</button>
       </div>
     </div>
+  <!-- ADMIN SCREEN -->
+  <div id="screen-admin" class="screen">
+    <div class="breadcrumb"><a onclick="showScreen('screen-home')">Home</a> › Admin</div>
+    <h2><span class="suit">♣</span> Superuser View</h2>
+
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-header">
+        <h3 style="margin:0">Users <span id="admin-user-count" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mute)"></span></h3>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table" id="admin-users-table">
+          <thead><tr>
+            <th>Name</th><th>Joined</th><th>Games</th><th>Hands</th>
+          </tr></thead>
+          <tbody id="admin-users-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 style="margin:0">Games <span id="admin-game-count" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mute)"></span></h3>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table" id="admin-games-table">
+          <thead><tr>
+            <th>Game</th><th>Owner</th><th>Created</th><th>Hands</th><th>Members</th><th>Code</th>
+          </tr></thead>
+          <tbody id="admin-games-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="admin-error" class="error-msg" style="margin-top:12px"></div>
   </div>
 </div>
 
-<!-- Join dialog -->
+<!-- Admin login dialog -->
+<div id="admin-dialog-overlay" class="dialog-overlay">
+  <div class="dialog-box">
+    <div class="dialog-title">Admin Access</div>
+    <div class="dialog-msg">Enter the admin password to continue.</div>
+    <div class="field">
+      <input type="password" id="admin-pw-input" placeholder="Admin password" autocomplete="off">
+    </div>
+    <div id="admin-pw-error" class="error-msg"></div>
+    <div class="dialog-actions" style="margin-top:12px">
+      <button class="btn-ghost" onclick="closeAdminDialog()">Cancel</button>
+      <button class="btn-primary" onclick="submitAdminPassword()">Enter</button>
+    </div>
+  </div>
+</div>
 <div id="join-dialog-overlay" class="dialog-overlay">
   <div class="dialog-box">
     <div class="dialog-title">Join a Game</div>
@@ -815,6 +878,7 @@ function renderUserBadge() {
   if (!currentUser) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = `
     <div class="user-badge">
+      <button class="admin-link" onclick="openAdminDialog()" title="Admin">⚙</button>
       <span class="user-name">${esc(currentUser.name)}</span>
       <button class="logout-btn" onclick="doLogout()" title="Sign out">✕</button>
     </div>`;
@@ -1225,6 +1289,69 @@ document.getElementById('join-dialog-overlay').addEventListener('click', e => {
 document.getElementById('join-code-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') doJoinGame();
 });
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
+let _adminPassword = '';
+
+function openAdminDialog() {
+  document.getElementById('admin-pw-input').value = '';
+  document.getElementById('admin-pw-error').classList.remove('visible');
+  document.getElementById('admin-dialog-overlay').classList.add('visible');
+  setTimeout(() => document.getElementById('admin-pw-input').focus(), 80);
+}
+
+function closeAdminDialog() {
+  document.getElementById('admin-dialog-overlay').classList.remove('visible');
+}
+
+async function submitAdminPassword() {
+  const pw = document.getElementById('admin-pw-input').value.trim();
+  if (!pw) return;
+  loading(true);
+  try {
+    const data = await fetch(API + '/admin/overview', {
+      headers: { 'Authorization': `Bearer ${pw}` }
+    }).then(r => { if (!r.ok) throw new Error('Wrong password'); return r.json(); });
+    _adminPassword = pw;
+    closeAdminDialog();
+    renderAdminScreen(data);
+    showScreen('screen-admin');
+  } catch(e) {
+    showError('admin-pw-error', e.message);
+  } finally { loading(false); }
+}
+
+document.getElementById('admin-pw-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAdminPassword();
+});
+document.getElementById('admin-dialog-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeAdminDialog();
+});
+
+function renderAdminScreen(data) {
+  const { users, games } = data;
+
+  document.getElementById('admin-user-count').textContent = `(${users.length})`;
+  document.getElementById('admin-game-count').textContent = `(${games.length})`;
+
+  document.getElementById('admin-users-body').innerHTML = users.map(u => `
+    <tr>
+      <td class="admin-name">${esc(u.name)}</td>
+      <td style="color:var(--text-dim)">${fmtDate(u.created_at)}</td>
+      <td class="admin-num">${u.game_count}</td>
+      <td class="admin-num">${u.hand_count}</td>
+    </tr>`).join('') || '<tr><td colspan="4" style="color:var(--text-mute);text-align:center;padding:20px">No users yet</td></tr>';
+
+  document.getElementById('admin-games-body').innerHTML = games.map(g => `
+    <tr>
+      <td class="admin-name">${esc(g.name)}</td>
+      <td style="color:var(--text-dim)">${esc(g.owner_name || '—')}</td>
+      <td style="color:var(--text-dim)">${fmtDate(g.created_at)}</td>
+      <td class="admin-num">${g.hand_count}</td>
+      <td class="admin-num">${g.member_count}</td>
+      <td>${g.join_code ? `<span class="admin-code">${g.join_code}</span>` : '<span style="color:var(--text-mute)">—</span>'}</td>
+    </tr>`).join('') || '<tr><td colspan="6" style="color:var(--text-mute);text-align:center;padding:20px">No games yet</td></tr>';
+}
 
 // ── Boot: restore session from stored token ───────────────────────────────────
 (async () => {
