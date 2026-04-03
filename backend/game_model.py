@@ -5,11 +5,23 @@ Game-level operations: create, list, fetch, share games and their players.
 import random
 import string
 from collections import defaultdict
-from database import get_connection, insert_returning, where_in
+from database import get_connection, DB_BACKEND, insert_returning, where_in
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _bool_val(v: bool) -> bool | int:
+    """Return the correct boolean representation for the active backend."""
+    return v if DB_BACKEND == "postgres" else (1 if v else 0)
+
+
+def _norm_player(p: dict) -> dict:
+    """Normalise a player row: cast is_active to Python bool."""
+    p["is_active"] = bool(p.get("is_active", 1))
+    return p
 
 
 def _gen_join_code() -> str:
-    """Generate a unique 5-character alphanumeric join code."""
     chars = string.ascii_uppercase + string.digits
     return ''.join(random.choices(chars, k=5))
 
@@ -20,15 +32,17 @@ def _unique_join_code(cur) -> str:
         cur.execute("SELECT id FROM games WHERE join_code = %s", (code,))
         if not cur.fetchone():
             return code
-    raise RuntimeError("Could not generate unique join code. Try again.")
+    raise RuntimeError("Could not generate a unique join code. Try again.")
 
+
+# ── Game CRUD ─────────────────────────────────────────────────────────────────
 
 def create_game(name: str, player_names: list[str], user_id: int | None = None) -> dict:
     if not 3 <= len(player_names) <= 6:
         raise ValueError("A game requires between 3 and 6 players.")
 
     conn = get_connection()
-    cur = conn.cursor()
+    cur  = conn.cursor()
 
     game = insert_returning(
         cur, conn,
@@ -36,8 +50,9 @@ def create_game(name: str, player_names: list[str], user_id: int | None = None) 
         sql_sqlite="INSERT INTO games (name, user_id) VALUES (%s, %s)",
         params=(name, user_id),
     )
+    game["players"]  = []
+    game["is_owner"] = True
 
-    players = []
     for i, pname in enumerate(player_names):
         player = insert_returning(
             cur, conn,
@@ -45,210 +60,17 @@ def create_game(name: str, player_names: list[str], user_id: int | None = None) 
             sql_sqlite="INSERT INTO players (game_id, name, position) VALUES (%s, %s, %s)",
             params=(game["id"], pname.strip(), i),
         )
-        player["is_active"] = bool(player.get("is_active", 1))
-        players.append(player)
+        game["players"].append(_norm_player(player))
 
     conn.commit()
     cur.close()
     conn.close()
-
-    game["players"] = players
-    game["is_owner"] = True
     return game
-
-
-def get_or_create_join_code(game_id: int) -> str:
-    """Return existing join code or generate and save a new one."""
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT join_code FROM games WHERE id = %s", (game_id,))
-    row = cur.fetchone()
-    if row and row["join_code"]:
-        code = row["join_code"]
-        cur.close(); conn.close()
-        return code
-
-    code = _unique_join_code(cur)
-    cur.execute("UPDATE games SET join_code = %s WHERE id = %s", (code, game_id))
-    conn.commit()
-    cur.close(); conn.close()
-    return code
-
-
-def join_game_by_code(code: str, user_id: int) -> dict:
-    """
-    Find a game by join code and add user as a member.
-    Returns the game dict. Raises ValueError on bad code or already owner.
-    """
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT id, user_id, name FROM games WHERE join_code = %s", (code.strip().upper(),))
-    row = cur.fetchone()
-    if not row:
-        cur.close(); conn.close()
-        raise ValueError("No game found with that code. Check and try again.")
-
-    game_id = row["id"]
-
-    if row["user_id"] == user_id:
-        cur.close(); conn.close()
-        raise ValueError("You already own this game — it's already in your list.")
-
-    # Upsert membership (ignore if already a member)
-    try:
-        cur.execute(
-            "INSERT INTO game_members (game_id, user_id) VALUES (%s, %s)",
-            (game_id, user_id),
-        )
-        conn.commit()
-    except Exception:
-        conn.rollback() if hasattr(conn, 'rollback') else None
-
-    cur.close(); conn.close()
-    return get_game(game_id)
-
-
-def get_game_members(game_id: int) -> list[dict]:
-    """Return list of users who have joined this game (not the owner)."""
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT u.id, u.name, gm.joined_at
-        FROM game_members gm
-        JOIN users u ON u.id = gm.user_id
-        WHERE gm.game_id = %s
-        ORDER BY gm.joined_at
-    """, (game_id,))
-    members = [dict(r) for r in cur.fetchall()]
-    cur.close(); conn.close()
-    return members
-
-
-def rename_player(player_id: int, name: str) -> dict:
-    """Rename a player. Returns updated player dict."""
-    name = name.strip()
-    if not name:
-        raise ValueError("Player name cannot be empty.")
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM players WHERE id = %s", (player_id,))
-    if not cur.fetchone():
-        cur.close(); conn.close()
-        raise ValueError("Player not found.")
-    cur.execute("UPDATE players SET name = %s WHERE id = %s", (name, player_id))
-    conn.commit()
-    cur.execute("SELECT id, name, position, is_active FROM players WHERE id = %s", (player_id,))
-    player = dict(cur.fetchone())
-    player["is_active"] = bool(player["is_active"])
-    cur.close(); conn.close()
-    return player
-
-
-def delete_player(player_id: int) -> None:
-    """
-    Delete a player only if they have never appeared in any hand entry.
-    Also validates the game would still have at least 3 players.
-    """
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT game_id FROM players WHERE id = %s", (player_id,))
-    row = cur.fetchone()
-    if not row:
-        cur.close(); conn.close()
-        raise ValueError("Player not found.")
-    game_id = row["game_id"]
-
-    # Check player has no hand entries
-    cur.execute(
-        "SELECT COUNT(*) AS cnt FROM hand_entries WHERE player_id = %s",
-        (player_id,),
-    )
-    if cur.fetchone()["cnt"] > 0:
-        cur.close(); conn.close()
-        raise ValueError("Cannot delete a player who has already played hands.")
-
-    # Ensure at least 3 players remain
-    cur.execute(
-        "SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s AND id != %s",
-        (game_id, player_id),
-    )
-    if cur.fetchone()["cnt"] < 3:
-        cur.close(); conn.close()
-        raise ValueError("Cannot delete: game must always have at least 3 players.")
-
-    cur.execute("DELETE FROM players WHERE id = %s", (player_id,))
-    conn.commit()
-    cur.close(); conn.close()
-
-
-def add_player(game_id: int, name: str) -> dict:
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        "SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM players WHERE game_id = %s",
-        (game_id,),
-    )
-    next_pos = cur.fetchone()["next_pos"]
-
-    cur.execute("SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s", (game_id,))
-    if cur.fetchone()["cnt"] >= 6:
-        raise ValueError("A game cannot have more than 6 players.")
-
-    player = insert_returning(
-        cur, conn,
-        sql_pg="INSERT INTO players (game_id, name, position) VALUES (%s, %s, %s) RETURNING id, name, position, is_active",
-        sql_sqlite="INSERT INTO players (game_id, name, position) VALUES (%s, %s, %s)",
-        params=(game_id, name.strip(), next_pos),
-    )
-    player["is_active"] = bool(player.get("is_active", 1))
-
-    conn.commit()
-    cur.close()
-    conn.close()
-    return player
-
-
-def set_player_active(player_id: int, is_active: bool) -> dict:
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT game_id FROM players WHERE id = %s", (player_id,))
-    row = cur.fetchone()
-    if not row:
-        raise ValueError("Player not found.")
-    game_id = row["game_id"]
-
-    if not is_active:
-        from database import DB_BACKEND
-        active_val = True if DB_BACKEND == "postgres" else 1
-        cur.execute(
-            "SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s AND is_active = %s AND id != %s",
-            (game_id, active_val, player_id),
-        )
-        if cur.fetchone()["cnt"] < 3:
-            raise ValueError("Cannot deactivate: at least 3 active players required.")
-
-    from database import DB_BACKEND
-    val = is_active if DB_BACKEND == "postgres" else (1 if is_active else 0)
-    cur.execute("UPDATE players SET is_active = %s WHERE id = %s", (val, player_id))
-    conn.commit()
-
-    cur.execute("SELECT id, name, position, is_active FROM players WHERE id = %s", (player_id,))
-    player = dict(cur.fetchone())
-    player["is_active"] = bool(player["is_active"])
-
-    cur.close()
-    conn.close()
-    return player
 
 
 def delete_game(game_id: int) -> None:
     conn = get_connection()
-    cur = conn.cursor()
+    cur  = conn.cursor()
     cur.execute("DELETE FROM games WHERE id = %s", (game_id,))
     conn.commit()
     cur.close()
@@ -256,12 +78,9 @@ def delete_game(game_id: int) -> None:
 
 
 def list_games(user_id: int | None = None) -> list[dict]:
-    """
-    Return all games visible to user_id: games they own + games they've joined.
-    Each game dict includes is_owner bool.
-    """
+    """Return all games visible to user_id (owned + joined), most recent first."""
     conn = get_connection()
-    cur = conn.cursor()
+    cur  = conn.cursor()
 
     if user_id is not None:
         cur.execute("""
@@ -278,8 +97,7 @@ def list_games(user_id: int | None = None) -> list[dict]:
     else:
         cur.execute("""
             SELECT g.id, g.name, g.created_at, g.is_active, g.user_id, g.join_code,
-                   COUNT(h.id) AS hand_count,
-                   1 AS is_owner
+                   COUNT(h.id) AS hand_count, 1 AS is_owner
             FROM games g
             LEFT JOIN hands h ON h.game_id = g.id
             GROUP BY g.id
@@ -289,7 +107,7 @@ def list_games(user_id: int | None = None) -> list[dict]:
     games = []
     for r in cur.fetchall():
         g = dict(r)
-        g["is_owner"] = bool(g["is_owner"])
+        g["is_owner"]  = bool(g["is_owner"])
         g["is_active"] = bool(g.get("is_active", True))
         games.append(g)
 
@@ -300,7 +118,7 @@ def list_games(user_id: int | None = None) -> list[dict]:
 
 def get_game(game_id: int) -> dict | None:
     conn = get_connection()
-    cur = conn.cursor()
+    cur  = conn.cursor()
 
     cur.execute(
         "SELECT id, name, created_at, is_active, user_id, join_code FROM games WHERE id = %s",
@@ -310,6 +128,7 @@ def get_game(game_id: int) -> dict | None:
     if not row:
         cur.close(); conn.close()
         return None
+
     game = dict(row)
     game["is_active"] = bool(game["is_active"])
 
@@ -317,34 +136,16 @@ def get_game(game_id: int) -> dict | None:
         "SELECT id, name, position, is_active FROM players WHERE game_id = %s ORDER BY position",
         (game_id,),
     )
-    players = [dict(r) for r in cur.fetchall()]
-    for p in players:
-        p["is_active"] = bool(p["is_active"])
-    game["players"] = players
+    game["players"] = [_norm_player(dict(r)) for r in cur.fetchall()]
 
     cur.close()
     conn.close()
     return game
 
 
-def user_can_access(game: dict, user_id: int) -> bool:
-    """True if user owns or is a member of this game."""
-    if game.get("user_id") == user_id:
-        return True
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT 1 FROM game_members WHERE game_id = %s AND user_id = %s",
-        (game["id"], user_id),
-    )
-    result = cur.fetchone() is not None
-    cur.close(); conn.close()
-    return result
-
-
 def get_scoreboard(game_id: int) -> dict:
     conn = get_connection()
-    cur = conn.cursor()
+    cur  = conn.cursor()
 
     cur.execute(
         "SELECT id, hand_number, better_game, played_at FROM hands WHERE game_id = %s ORDER BY hand_number",
@@ -354,6 +155,7 @@ def get_scoreboard(game_id: int) -> dict:
     for h in hands:
         h["better_game"] = bool(h["better_game"])
 
+    entries = []
     if hands:
         hand_ids = [h["id"] for h in hands]
         frag, params = where_in("he.hand_id", hand_ids)
@@ -366,22 +168,207 @@ def get_scoreboard(game_id: int) -> dict:
             ORDER BY he.hand_id, p.position
         """, params)
         entries = [dict(r) for r in cur.fetchall()]
-    else:
-        entries = []
 
     cur.close()
     conn.close()
 
-    entries_by_hand = defaultdict(list)
+    entries_by_hand: dict = defaultdict(list)
+    totals: dict = defaultdict(int)
     for e in entries:
         e["is_winner"] = bool(e["is_winner"])
         entries_by_hand[e["hand_id"]].append(e)
+        totals[e["player_id"]] += e["points"]
 
     for h in hands:
         h["entries"] = entries_by_hand[h["id"]]
 
-    totals = defaultdict(int)
-    for e in entries:
-        totals[e["player_id"]] += e["points"]
-
     return {"hands": hands, "totals": dict(totals)}
+
+
+# ── Sharing ───────────────────────────────────────────────────────────────────
+
+def get_or_create_join_code(game_id: int) -> str:
+    """Return the existing join code for a game, or generate and persist one."""
+    conn = get_connection()
+    cur  = conn.cursor()
+
+    cur.execute("SELECT join_code FROM games WHERE id = %s", (game_id,))
+    row = cur.fetchone()
+    if row and row["join_code"]:
+        code = row["join_code"]
+        cur.close(); conn.close()
+        return code
+
+    code = _unique_join_code(cur)
+    cur.execute("UPDATE games SET join_code = %s WHERE id = %s", (code, game_id))
+    conn.commit()
+    cur.close(); conn.close()
+    return code
+
+
+def join_game_by_code(code: str, user_id: int) -> dict:
+    """Add user as a member of the game identified by code."""
+    conn = get_connection()
+    cur  = conn.cursor()
+
+    cur.execute("SELECT id, user_id FROM games WHERE join_code = %s", (code.strip().upper(),))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise ValueError("No game found with that code. Check and try again.")
+
+    if row["user_id"] == user_id:
+        cur.close(); conn.close()
+        raise ValueError("You already own this game — it's already in your list.")
+
+    try:
+        cur.execute(
+            "INSERT INTO game_members (game_id, user_id) VALUES (%s, %s)",
+            (row["id"], user_id),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
+    cur.close(); conn.close()
+    return get_game(row["id"])
+
+
+def get_game_members(game_id: int) -> list[dict]:
+    """Return users who have joined this game (excludes the owner)."""
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT u.id, u.name, gm.joined_at
+        FROM game_members gm
+        JOIN users u ON u.id = gm.user_id
+        WHERE gm.game_id = %s
+        ORDER BY gm.joined_at
+    """, (game_id,))
+    members = [dict(r) for r in cur.fetchall()]
+    cur.close(); conn.close()
+    return members
+
+
+def user_can_access(game: dict, user_id: int) -> bool:
+    """True if user owns or is a member of this game."""
+    if game.get("user_id") == user_id:
+        return True
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute(
+        "SELECT 1 FROM game_members WHERE game_id = %s AND user_id = %s",
+        (game["id"], user_id),
+    )
+    result = cur.fetchone() is not None
+    cur.close(); conn.close()
+    return result
+
+
+# ── Player CRUD ───────────────────────────────────────────────────────────────
+
+def add_player(game_id: int, name: str) -> dict:
+    conn = get_connection()
+    cur  = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s", (game_id,))
+    if cur.fetchone()["cnt"] >= 6:
+        cur.close(); conn.close()
+        raise ValueError("A game cannot have more than 6 players.")
+
+    cur.execute(
+        "SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM players WHERE game_id = %s",
+        (game_id,),
+    )
+    next_pos = cur.fetchone()["next_pos"]
+
+    player = insert_returning(
+        cur, conn,
+        sql_pg="INSERT INTO players (game_id, name, position) VALUES (%s, %s, %s) RETURNING id, name, position, is_active",
+        sql_sqlite="INSERT INTO players (game_id, name, position) VALUES (%s, %s, %s)",
+        params=(game_id, name.strip(), next_pos),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return _norm_player(player)
+
+
+def rename_player(player_id: int, name: str) -> dict:
+    name = name.strip()
+    if not name:
+        raise ValueError("Player name cannot be empty.")
+    conn = get_connection()
+    cur  = conn.cursor()
+
+    cur.execute("SELECT id FROM players WHERE id = %s", (player_id,))
+    if not cur.fetchone():
+        cur.close(); conn.close()
+        raise ValueError("Player not found.")
+
+    cur.execute("UPDATE players SET name = %s WHERE id = %s", (name, player_id))
+    conn.commit()
+    cur.execute("SELECT id, name, position, is_active FROM players WHERE id = %s", (player_id,))
+    player = dict(cur.fetchone())
+    cur.close(); conn.close()
+    return _norm_player(player)
+
+
+def set_player_active(player_id: int, is_active: bool) -> dict:
+    conn = get_connection()
+    cur  = conn.cursor()
+
+    cur.execute("SELECT game_id FROM players WHERE id = %s", (player_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise ValueError("Player not found.")
+    game_id = row["game_id"]
+
+    if not is_active:
+        cur.execute(
+            "SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s AND is_active = %s AND id != %s",
+            (game_id, _bool_val(True), player_id),
+        )
+        if cur.fetchone()["cnt"] < 3:
+            cur.close(); conn.close()
+            raise ValueError("Cannot deactivate: at least 3 active players required.")
+
+    cur.execute("UPDATE players SET is_active = %s WHERE id = %s", (_bool_val(is_active), player_id))
+    conn.commit()
+    cur.execute("SELECT id, name, position, is_active FROM players WHERE id = %s", (player_id,))
+    player = dict(cur.fetchone())
+    cur.close(); conn.close()
+    return _norm_player(player)
+
+
+def delete_player(player_id: int) -> None:
+    """Delete a player only if they have never appeared in a hand."""
+    conn = get_connection()
+    cur  = conn.cursor()
+
+    cur.execute("SELECT game_id FROM players WHERE id = %s", (player_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise ValueError("Player not found.")
+    game_id = row["game_id"]
+
+    cur.execute(
+        "SELECT COUNT(*) AS cnt FROM hand_entries WHERE player_id = %s", (player_id,)
+    )
+    if cur.fetchone()["cnt"] > 0:
+        cur.close(); conn.close()
+        raise ValueError("Cannot delete a player who has already played hands.")
+
+    cur.execute(
+        "SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s AND id != %s",
+        (game_id, player_id),
+    )
+    if cur.fetchone()["cnt"] < 3:
+        cur.close(); conn.close()
+        raise ValueError("Cannot delete: game must always have at least 3 players.")
+
+    cur.execute("DELETE FROM players WHERE id = %s", (player_id,))
+    conn.commit()
+    cur.close(); conn.close()

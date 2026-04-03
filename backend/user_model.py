@@ -1,7 +1,6 @@
 """
 User authentication: name + 4-digit PIN.
-PINs are stored as SHA-256 hashes — not cryptographically ideal for
-passwords but perfectly adequate for a casual game tracker PIN.
+PINs are stored as SHA-256 hashes — adequate for a casual game tracker PIN.
 """
 
 import hashlib
@@ -21,7 +20,7 @@ def register(name: str, pin: str) -> dict:
         raise ValueError("PIN must be exactly 4 digits.")
 
     conn = get_connection()
-    cur = conn.cursor()
+    cur  = conn.cursor()
 
     cur.execute("SELECT id FROM users WHERE lower(name) = lower(%s)", (name,))
     if cur.fetchone():
@@ -44,7 +43,7 @@ def register(name: str, pin: str) -> dict:
 def login(name: str, pin: str) -> dict:
     """Verify name+PIN. Returns user dict or raises ValueError."""
     conn = get_connection()
-    cur = conn.cursor()
+    cur  = conn.cursor()
 
     cur.execute(
         "SELECT id, name FROM users WHERE lower(name) = lower(%s) AND pin_hash = %s",
@@ -57,13 +56,3 @@ def login(name: str, pin: str) -> dict:
     if not row:
         raise ValueError("Incorrect name or PIN.")
     return {"id": row["id"], "name": row["name"]}
-
-
-def get_user(user_id: int) -> dict | None:
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT id, name FROM users WHERE id = %s", (user_id,))
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-    return dict(row) if row else None

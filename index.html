@@ -829,6 +829,7 @@ let _pendingDeleteId = null;
 let currentUser      = null;   // { id, name }
 
 const SUITS = ['♠','♥','♦','♣','♠','♥'];
+const SUIT_RED = [false, true, true, false, false, true];
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 function applyTheme(theme) {
@@ -898,16 +899,19 @@ function switchAuthTab(tab) {
   document.getElementById('tab-register').classList.toggle('active', tab === 'register');
 }
 
+function _handleAuthResponse(resp) {
+  localStorage.setItem('mc-token', resp.token);
+  currentUser = { id: resp.id, name: resp.name };
+  renderUserBadge();
+  showScreen('screen-home');
+}
+
 async function doLogin() {
   const name = document.getElementById('login-name').value.trim();
   const pin  = document.getElementById('login-pin').value.trim();
   loading(true);
   try {
-    const resp = await apiFetch('/auth/login', { method:'POST', body: JSON.stringify({ name, pin }) });
-    localStorage.setItem('mc-token', resp.token);
-    currentUser = { id: resp.id, name: resp.name };
-    renderUserBadge();
-    showScreen('screen-home');
+    _handleAuthResponse(await apiFetch('/auth/login', { method:'POST', body: JSON.stringify({ name, pin }) }));
   } catch(e) { showError('login-error', e.message); }
   finally { loading(false); }
 }
@@ -919,11 +923,7 @@ async function doRegister() {
   if (pin !== pin2) { showError('reg-error', 'PINs do not match.'); return; }
   loading(true);
   try {
-    const resp = await apiFetch('/auth/register', { method:'POST', body: JSON.stringify({ name, pin }) });
-    localStorage.setItem('mc-token', resp.token);
-    currentUser = { id: resp.id, name: resp.name };
-    renderUserBadge();
-    showScreen('screen-home');
+    _handleAuthResponse(await apiFetch('/auth/register', { method:'POST', body: JSON.stringify({ name, pin }) }));
   } catch(e) { showError('reg-error', e.message); }
   finally { loading(false); }
 }
@@ -958,7 +958,6 @@ async function loadGameList() {
           </div>
           <div class="game-item-right">
             ${sharedBadge}
-            <span class="game-item-badge">${g.hand_count} hand${g.hand_count !== 1 ? 's' : ''}</span>
             ${deleteBtn}
           </div>
         </div>`;
@@ -1068,15 +1067,20 @@ function renderPlayerRoster(players, isOwner, board) {
   }).join('');
 }
 
+async function _refreshGameView() {
+  const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
+  renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
+  renderScoreboard(currentGame.players, board);
+  return board;
+}
+
 async function togglePlayerActive(pid, currently) {
   loading(true);
   try {
     const player = await apiFetch(`/players/${pid}`, { method:'PATCH', body: JSON.stringify({ is_active: !currently }) });
     const p = currentGame.players.find(p => p.id === pid);
     if (p) p.is_active = player.is_active;
-    const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
-    renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
-    renderScoreboard(currentGame.players, board);
+    await _refreshGameView();
   } catch(e) { showError('add-player-error', e.message); }
   finally { loading(false); }
 }
@@ -1093,9 +1097,7 @@ async function doRenamePlayer(pid, name) {
     const player = await apiFetch(`/players/${pid}/name`, { method:'PUT', body: JSON.stringify({ name }) });
     const p = currentGame.players.find(p => p.id === pid);
     if (p) p.name = player.name;
-    const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
-    renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
-    renderScoreboard(currentGame.players, board);
+    await _refreshGameView();
   } catch(e) { alert('Could not rename: ' + e.message); }
   finally { loading(false); }
 }
@@ -1106,9 +1108,7 @@ async function doDeletePlayer(pid, name) {
   try {
     await apiFetch(`/players/${pid}`, { method:'DELETE' });
     currentGame.players = currentGame.players.filter(p => p.id !== pid);
-    const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
-    renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
-    renderScoreboard(currentGame.players, board);
+    await _refreshGameView();
     document.getElementById('add-player-section').style.display =
       currentGame.is_owner && currentGame.players.length < 6 ? 'block' : 'none';
     document.getElementById('player-toggle-hint').style.display =
@@ -1123,11 +1123,10 @@ async function addPlayer() {
   loading(true);
   try {
     const player = await apiFetch(`/games/${currentGame.id}/players`, { method:'POST', body: JSON.stringify({ name }) });
-    player.is_active = true; currentGame.players.push(player);
+    player.is_active = true;
+    currentGame.players.push(player);
     document.getElementById('new-player-name').value = '';
-    const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
-    renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
-    renderScoreboard(currentGame.players, board);
+    await _refreshGameView();
     document.getElementById('add-player-section').style.display =
       currentGame.is_owner && currentGame.players.length < 6 ? 'block' : 'none';
   } catch(e) { showError('add-player-error', e.message); }
@@ -1215,13 +1214,11 @@ function renderBetterGameToggle() {
   document.getElementById('bg-checkbox').textContent = isBetterGame ? '✓' : '';
 }
 function renderHandEntries() {
-  const PIPS = ['♠','♥','♦','♣','♠','♥'];
-  const RED  = [false, true, true, false, false, true];
   document.getElementById('hand-entries').innerHTML = handEntries.map((e, i) => `
     <div class="entry-card ${e.is_winner ? 'winner-card' : ''}">
-      <span class="entry-suit-pip ${RED[i%4] ? 'red' : ''}">${PIPS[i%PIPS.length]}</span>
+      <span class="entry-suit-pip ${SUIT_RED[i%4] ? 'red' : ''}">${SUITS[i%SUITS.length]}</span>
       <div class="entry-card-top">
-        <div class="entry-player-name"><span class="entry-player-suit">${PIPS[i%PIPS.length]}</span>${esc(e.name)}</div>
+        <div class="entry-player-name"><span class="entry-player-suit">${SUITS[i%SUITS.length]}</span>${esc(e.name)}</div>
         <div class="winner-toggle">
           <input type="radio" name="winner" id="win-${i}" ${e.is_winner ? 'checked' : ''} onchange="setWinner(${i})">
           <label class="winner-toggle-label" for="win-${i}">${e.is_winner ? '👑 Winner' : 'Winner?'}</label>
