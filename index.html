@@ -1380,6 +1380,9 @@ document.getElementById('join-code-input').addEventListener('keydown', e => {
 let _adminPassword = '';
 
 function openAdminDialog() {
+  // If we already have a cached admin password, go straight to the screen
+  const cached = sessionStorage.getItem('mc-admin-pw');
+  if (cached) { _adminPassword = cached; loadAdminScreen(); return; }
   document.getElementById('admin-pw-input').value = '';
   document.getElementById('admin-pw-error').classList.remove('visible');
   document.getElementById('admin-dialog-overlay').classList.add('visible');
@@ -1390,28 +1393,32 @@ function closeAdminDialog() {
   document.getElementById('admin-dialog-overlay').classList.remove('visible');
 }
 
-async function submitAdminPassword() {
-  const pw = document.getElementById('admin-pw-input').value.trim();
-  if (!pw) return;
+async function loadAdminScreen() {
   loading(true);
   try {
     const res  = await fetch(API + '/admin/overview', {
-      headers: { 'Authorization': `Bearer ${pw}` },
+      headers: { 'Authorization': `Bearer ${_adminPassword}` },
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Wrong password.');
-    _adminPassword = pw;
-    closeAdminDialog();
-    try {
-      renderAdminScreen(data);
-    } catch(renderErr) {
+    sessionStorage.setItem('mc-admin-pw', _adminPassword);
+    try { renderAdminScreen(data); } catch(renderErr) {
       document.getElementById('admin-user-list').innerHTML =
         `<div class="error-msg visible">Render error: ${renderErr.message}</div>`;
     }
     showScreen('screen-admin');
   } catch(e) {
+    sessionStorage.removeItem('mc-admin-pw');
     showError('admin-pw-error', e.message);
   } finally { loading(false); }
+}
+
+async function submitAdminPassword() {
+  const pw = document.getElementById('admin-pw-input').value.trim();
+  if (!pw) return;
+  _adminPassword = pw;
+  closeAdminDialog();
+  await loadAdminScreen();
 }
 
 document.getElementById('admin-pw-input')?.addEventListener('keydown', e => {
@@ -1500,6 +1507,9 @@ async function adminOpenGame(gameId, userId) {
 
 // ── Boot: restore session from stored token ───────────────────────────────────
 (async () => {
+  // Restore admin password for the session
+  const cachedPw = sessionStorage.getItem('mc-admin-pw');
+  if (cachedPw) _adminPassword = cachedPw;
   const token = localStorage.getItem('mc-token');
   if (!token) { showScreen('screen-auth'); return; }
   try {
