@@ -367,7 +367,7 @@ def route_admin_overview():
 
     cur.execute("""
         SELECT g.id, ANY_VALUE(g.name) as name, ANY_VALUE(g.created_at) as created_at, ANY_VALUE(g.join_code) as join_code,
-               u.name AS owner_name,
+               ANY_VALUE(u.name) AS owner_name,
                COUNT(DISTINCT h.id)  AS hand_count,
                COUNT(DISTINCT gm.user_id) AS member_count
         FROM games g
