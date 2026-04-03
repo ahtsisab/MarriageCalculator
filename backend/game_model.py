@@ -1,9 +1,26 @@
 """
-Game-level operations: create, list, fetch games and their players.
+Game-level operations: create, list, fetch, share games and their players.
 """
 
+import random
+import string
 from collections import defaultdict
 from database import get_connection, insert_returning, where_in
+
+
+def _gen_join_code() -> str:
+    """Generate a unique 5-character alphanumeric join code."""
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(random.choices(chars, k=5))
+
+
+def _unique_join_code(cur) -> str:
+    for _ in range(10):
+        code = _gen_join_code()
+        cur.execute("SELECT id FROM games WHERE join_code = %s", (code,))
+        if not cur.fetchone():
+            return code
+    raise RuntimeError("Could not generate unique join code. Try again.")
 
 
 def create_game(name: str, player_names: list[str], user_id: int | None = None) -> dict:
@@ -15,7 +32,7 @@ def create_game(name: str, player_names: list[str], user_id: int | None = None) 
 
     game = insert_returning(
         cur, conn,
-        sql_pg="INSERT INTO games (name, user_id) VALUES (%s, %s) RETURNING id, name, created_at, user_id",
+        sql_pg="INSERT INTO games (name, user_id) VALUES (%s, %s) RETURNING id, name, created_at, user_id, join_code",
         sql_sqlite="INSERT INTO games (name, user_id) VALUES (%s, %s)",
         params=(name, user_id),
     )
@@ -36,7 +53,77 @@ def create_game(name: str, player_names: list[str], user_id: int | None = None) 
     conn.close()
 
     game["players"] = players
+    game["is_owner"] = True
     return game
+
+
+def get_or_create_join_code(game_id: int) -> str:
+    """Return existing join code or generate and save a new one."""
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT join_code FROM games WHERE id = %s", (game_id,))
+    row = cur.fetchone()
+    if row and row["join_code"]:
+        code = row["join_code"]
+        cur.close(); conn.close()
+        return code
+
+    code = _unique_join_code(cur)
+    cur.execute("UPDATE games SET join_code = %s WHERE id = %s", (code, game_id))
+    conn.commit()
+    cur.close(); conn.close()
+    return code
+
+
+def join_game_by_code(code: str, user_id: int) -> dict:
+    """
+    Find a game by join code and add user as a member.
+    Returns the game dict. Raises ValueError on bad code or already owner.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id, user_id, name FROM games WHERE join_code = %s", (code.strip().upper(),))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise ValueError("No game found with that code. Check and try again.")
+
+    game_id = row["id"]
+
+    if row["user_id"] == user_id:
+        cur.close(); conn.close()
+        raise ValueError("You already own this game — it's already in your list.")
+
+    # Upsert membership (ignore if already a member)
+    try:
+        cur.execute(
+            "INSERT INTO game_members (game_id, user_id) VALUES (%s, %s)",
+            (game_id, user_id),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback() if hasattr(conn, 'rollback') else None
+
+    cur.close(); conn.close()
+    return get_game(game_id)
+
+
+def get_game_members(game_id: int) -> list[dict]:
+    """Return list of users who have joined this game (not the owner)."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT u.id, u.name, gm.joined_at
+        FROM game_members gm
+        JOIN users u ON u.id = gm.user_id
+        WHERE gm.game_id = %s
+        ORDER BY gm.joined_at
+    """, (game_id,))
+    members = [dict(r) for r in cur.fetchall()]
+    cur.close(); conn.close()
+    return members
 
 
 def add_player(game_id: int, name: str) -> dict:
@@ -85,7 +172,7 @@ def set_player_active(player_id: int, is_active: bool) -> dict:
             (game_id, active_val, player_id),
         )
         if cur.fetchone()["cnt"] < 3:
-            raise ValueError("Cannot deactivate: game must always have at least 3 active players.")
+            raise ValueError("Cannot deactivate: at least 3 active players required.")
 
     from database import DB_BACKEND
     val = is_active if DB_BACKEND == "postgres" else (1 if is_active else 0)
@@ -111,30 +198,43 @@ def delete_game(game_id: int) -> None:
 
 
 def list_games(user_id: int | None = None) -> list[dict]:
+    """
+    Return all games visible to user_id: games they own + games they've joined.
+    Each game dict includes is_owner bool.
+    """
     conn = get_connection()
     cur = conn.cursor()
 
     if user_id is not None:
         cur.execute("""
-            SELECT g.id, g.name, g.created_at, g.is_active,
-                   COUNT(h.id) AS hand_count
+            SELECT g.id, g.name, g.created_at, g.is_active, g.user_id, g.join_code,
+                   COUNT(h.id) AS hand_count,
+                   CASE WHEN g.user_id = %s THEN 1 ELSE 0 END AS is_owner
             FROM games g
             LEFT JOIN hands h ON h.game_id = g.id
             WHERE g.user_id = %s
+               OR g.id IN (SELECT game_id FROM game_members WHERE user_id = %s)
             GROUP BY g.id
             ORDER BY g.created_at DESC
-        """, (user_id,))
+        """, (user_id, user_id, user_id))
     else:
         cur.execute("""
-            SELECT g.id, g.name, g.created_at, g.is_active,
-                   COUNT(h.id) AS hand_count
+            SELECT g.id, g.name, g.created_at, g.is_active, g.user_id, g.join_code,
+                   COUNT(h.id) AS hand_count,
+                   1 AS is_owner
             FROM games g
             LEFT JOIN hands h ON h.game_id = g.id
             GROUP BY g.id
             ORDER BY g.created_at DESC
         """)
 
-    games = [dict(r) for r in cur.fetchall()]
+    games = []
+    for r in cur.fetchall():
+        g = dict(r)
+        g["is_owner"] = bool(g["is_owner"])
+        g["is_active"] = bool(g.get("is_active", True))
+        games.append(g)
+
     cur.close()
     conn.close()
     return games
@@ -144,7 +244,10 @@ def get_game(game_id: int) -> dict | None:
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT id, name, created_at, is_active, user_id FROM games WHERE id = %s", (game_id,))
+    cur.execute(
+        "SELECT id, name, created_at, is_active, user_id, join_code FROM games WHERE id = %s",
+        (game_id,),
+    )
     row = cur.fetchone()
     if not row:
         cur.close(); conn.close()
@@ -164,6 +267,21 @@ def get_game(game_id: int) -> dict | None:
     cur.close()
     conn.close()
     return game
+
+
+def user_can_access(game: dict, user_id: int) -> bool:
+    """True if user owns or is a member of this game."""
+    if game.get("user_id") == user_id:
+        return True
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT 1 FROM game_members WHERE game_id = %s AND user_id = %s",
+        (game["id"], user_id),
+    )
+    result = cur.fetchone() is not None
+    cur.close(); conn.close()
+    return result
 
 
 def get_scoreboard(game_id: int) -> dict:
