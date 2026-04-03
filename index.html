@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Marriage Calculator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
@@ -22,226 +22,402 @@
     --text:      #f0ead8;
     --text-dim:  #8a7d60;
     --text-mute: #4a4030;
-    --radius:    6px;
+    --radius:    8px;
     --shadow:    0 4px 32px rgba(0,0,0,.6);
+    --pad:       16px;        /* base page padding */
+    --card-pad:  18px;        /* card inner padding */
   }
+
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
   body {
     font-family: 'Lora', serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
+    /* prevent iOS tap highlight */
+    -webkit-tap-highlight-color: transparent;
     background-image:
       radial-gradient(ellipse at 20% 10%, rgba(201,168,76,.05) 0%, transparent 50%),
       radial-gradient(ellipse at 80% 90%, rgba(192,57,43,.04) 0%, transparent 50%);
   }
-  #app { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
 
+  #app { max-width: 900px; margin: 0 auto; padding: var(--pad) var(--pad) 80px; }
+
+  /* ── Header ── */
   header {
-    text-align: center; padding: 40px 0 32px;
-    border-bottom: 1px solid var(--border); margin-bottom: 32px; position: relative;
+    text-align: center;
+    padding: 24px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+    position: relative;
   }
+  /* hide suit decorations on narrow screens */
   header::before, header::after {
-    content: '♠ ♥ ♣ ♦'; position: absolute; top: 50%; transform: translateY(-50%);
-    color: var(--gold-dim); font-size: 13px; letter-spacing: 6px;
+    content: '♠ ♥ ♣ ♦';
+    position: absolute; top: 50%; transform: translateY(-50%);
+    color: var(--gold-dim); font-size: 11px; letter-spacing: 5px;
   }
   header::before { left: 0; } header::after { right: 0; }
 
   .logo {
     font-family: 'Playfair Display', serif;
-    font-size: clamp(28px, 6vw, 48px); font-weight: 900;
+    font-size: clamp(26px, 7vw, 48px); font-weight: 900;
     background: linear-gradient(135deg, var(--gold) 0%, var(--gold-lt) 50%, var(--gold) 100%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     letter-spacing: 2px; line-height: 1;
   }
   .logo-sub {
-    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 4px;
-    text-transform: uppercase; color: var(--text-dim); margin-top: 6px;
+    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--text-dim); margin-top: 5px;
   }
 
-  .screen { display: none; animation: fadeIn .25s ease; }
+  /* ── Screens ── */
+  .screen { display: none; animation: fadeIn .2s ease; }
   .screen.active { display: block; }
-  @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:none; } }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
 
+  /* ── Typography ── */
   h2 {
-    font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700;
-    color: var(--gold-lt); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+    font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
+    color: var(--gold-lt); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
   }
-  h2 .suit { font-size: 18px; }
-  h3 { font-family: 'Playfair Display', serif; font-size: 16px; color: var(--text-dim); margin-bottom: 12px; font-weight: 400; font-style: italic; }
+  h2 .suit { font-size: 16px; }
+  h3 {
+    font-family: 'Playfair Display', serif; font-size: 14px; color: var(--text-dim);
+    margin-bottom: 10px; font-weight: 400; font-style: italic;
+  }
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
-  .card + .card { margin-top: 16px; }
-  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  /* ── Cards ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: var(--card-pad); box-shadow: var(--shadow);
+  }
+  .card + .card { margin-top: 12px; }
+  .card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+  .card-header h2, .card-header h3 { margin: 0; }
 
-  button { cursor: pointer; font-family: 'DM Mono', monospace; border: none; border-radius: var(--radius); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; transition: all .15s; }
-  .btn-primary { background: linear-gradient(135deg, #a07830, var(--gold)); color: #0f0e0b; padding: 12px 28px; font-weight: 500; font-size: 13px; box-shadow: 0 2px 12px rgba(201,168,76,.3); }
-  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
-  .btn-secondary { background: transparent; color: var(--gold); border: 1px solid var(--gold-dim); padding: 10px 22px; }
+  /* ── Buttons ── */
+  button {
+    cursor: pointer; font-family: 'DM Mono', monospace; border: none;
+    border-radius: var(--radius); font-size: 12px; letter-spacing: 1px;
+    text-transform: uppercase; transition: all .15s;
+    /* larger touch targets */
+    min-height: 40px;
+    -webkit-appearance: none;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #a07830, var(--gold)); color: #0f0e0b;
+    padding: 12px 24px; font-weight: 500; font-size: 13px;
+    box-shadow: 0 2px 12px rgba(201,168,76,.3);
+  }
+  .btn-primary:hover  { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-primary:active { transform: none; filter: brightness(.95); }
+  .btn-secondary {
+    background: transparent; color: var(--gold);
+    border: 1px solid var(--gold-dim); padding: 10px 20px;
+  }
   .btn-secondary:hover { border-color: var(--gold); background: rgba(201,168,76,.06); }
-  .btn-danger { background: transparent; color: var(--red-lt); border: 1px solid rgba(192,57,43,.4); padding: 8px 16px; }
+  .btn-danger {
+    background: transparent; color: var(--red-lt);
+    border: 1px solid rgba(192,57,43,.4); padding: 8px 16px;
+  }
   .btn-danger:hover { background: rgba(192,57,43,.1); }
-  .btn-ghost { background: transparent; color: var(--text-dim); padding: 8px 14px; font-size: 11px; }
+  .btn-ghost { background: transparent; color: var(--text-dim); padding: 8px 12px; font-size: 11px; }
   .btn-ghost:hover { color: var(--text); }
-  .btn-sm { padding: 6px 14px; font-size: 11px; }
-  .btn-xs { padding: 4px 10px; font-size: 10px; }
+  .btn-sm { padding: 8px 14px; font-size: 11px; min-height: 36px; }
 
+  /* full-width button helper */
+  .btn-full { width: 100%; }
+
+  /* ── Inputs ── */
   input[type="text"], input[type="number"] {
     background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
-    color: var(--text); font-family: 'Lora', serif; font-size: 14px; padding: 10px 14px;
-    width: 100%; transition: border-color .15s; outline: none;
+    color: var(--text); font-family: 'Lora', serif; font-size: 16px; /* 16px prevents iOS zoom */
+    padding: 11px 14px; width: 100%; transition: border-color .15s; outline: none;
+    -webkit-appearance: none;
   }
   input:focus { border-color: var(--gold-dim); }
   input::placeholder { color: var(--text-mute); }
-  label { display: block; font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 6px; }
-  .field { margin-bottom: 16px; }
+  label {
+    display: block; font-family: 'DM Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 6px;
+  }
+  .field { margin-bottom: 14px; }
 
-  .game-list { display: flex; flex-direction: column; gap: 10px; }
-  .game-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: border-color .15s, background .15s; }
-  .game-item:hover { border-color: var(--gold-dim); background: var(--surface2); }
+  /* ── Breadcrumb ── */
+  .breadcrumb {
+    font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim);
+    margin-bottom: 16px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  .breadcrumb a { color: var(--gold-dim); cursor: pointer; text-decoration: none; }
+  .breadcrumb a:hover { color: var(--gold); }
+
+  /* ── Game list ── */
+  .game-list { display: flex; flex-direction: column; gap: 8px; }
+  .game-item {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px; display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; transition: border-color .15s, background .15s; gap: 10px;
+  }
+  .game-item:hover  { border-color: var(--gold-dim); background: var(--surface2); }
+  .game-item:active { background: var(--surface2); }
   .game-item-name { font-family: 'Playfair Display', serif; font-size: 16px; }
-  .game-item-meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); margin-top: 3px; }
-  .game-item-badge { font-family: 'DM Mono', monospace; font-size: 11px; padding: 4px 10px; border-radius: 20px; background: rgba(201,168,76,.1); color: var(--gold); border: 1px solid var(--gold-dim); }
-  .game-item-right { display: flex; align-items: center; gap: 10px; }
-  .game-item-delete { background: none; border: none; color: var(--text-mute); font-size: 16px; padding: 4px 6px; letter-spacing: 0; text-transform: none; border-radius: 4px; line-height: 1; transition: color .15s, background .15s; }
+  .game-item-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+  .game-item-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .game-item-badge {
+    font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px;
+    border-radius: 20px; background: rgba(201,168,76,.1); color: var(--gold);
+    border: 1px solid var(--gold-dim); white-space: nowrap;
+  }
+  .game-item-delete {
+    background: none; border: none; color: var(--text-mute); font-size: 16px;
+    padding: 6px 8px; letter-spacing: 0; text-transform: none; border-radius: 4px;
+    line-height: 1; transition: color .15s, background .15s; min-height: 0;
+    /* make tap target bigger without changing visual size */
+    position: relative;
+  }
+  .game-item-delete::after { content: ''; position: absolute; inset: -6px; }
   .game-item-delete:hover { color: var(--red-lt); background: rgba(192,57,43,.1); }
 
-  /* Confirm dialog */
-  .dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 200; }
+  /* ── Dialog ── */
+  .dialog-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.75);
+    display: none; align-items: flex-end; justify-content: center; z-index: 200;
+  }
   .dialog-overlay.visible { display: flex; }
-  .dialog-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 32px; max-width: 380px; width: 90%; box-shadow: var(--shadow); }
-  .dialog-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--gold-lt); margin-bottom: 10px; }
-  .dialog-msg { font-size: 14px; color: var(--text-dim); margin-bottom: 24px; line-height: 1.5; }
-  .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .dialog-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 24px var(--pad) calc(24px + env(safe-area-inset-bottom));
+    width: 100%; max-width: 500px; box-shadow: var(--shadow);
+    animation: slideUp .2s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
+  .dialog-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--gold-lt); margin-bottom: 8px; }
+  .dialog-msg { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; line-height: 1.5; }
+  .dialog-actions { display: flex; gap: 10px; }
+  .dialog-actions .btn-danger { flex: 1; }
+  .dialog-actions .btn-ghost  { flex: 1; }
 
-  .player-count-row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .count-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); padding: 10px 18px; font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; border-radius: var(--radius); transition: all .15s; }
-  .count-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+  /* ── Player count picker ── */
+  .player-count-row { display: flex; gap: 8px; }
+  .count-btn {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text-dim); padding: 12px 8px;
+    font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
+    border-radius: var(--radius); transition: all .15s;
+  }
+  .count-btn:hover   { border-color: var(--gold-dim); color: var(--gold); }
   .count-btn.selected { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,.1); }
 
   .player-inputs { display: flex; flex-direction: column; gap: 10px; }
   .player-input-row { display: flex; gap: 10px; align-items: center; }
-  .player-input-row .suit-badge { font-size: 18px; width: 32px; text-align: center; color: var(--text-dim); flex-shrink: 0; }
+  .player-input-row .suit-badge { font-size: 18px; width: 28px; text-align: center; color: var(--text-dim); flex-shrink: 0; }
 
-  /* ── Player roster (in game screen) ── */
-  .player-roster { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  /* ── Player roster ── */
+  .player-roster { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .player-chip {
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; gap: 6px;
     background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 20px; padding: 6px 14px;
+    border-radius: 20px; padding: 7px 12px;
     font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text);
     transition: all .15s;
   }
   .player-chip.inactive { opacity: .4; border-style: dashed; }
   .player-chip .chip-name { font-family: 'Lora', serif; font-size: 13px; }
   .player-chip .chip-toggle {
-    background: none; border: none; font-size: 13px; padding: 0 2px;
+    background: none; border: none; font-size: 14px; padding: 0 2px;
     color: var(--text-dim); cursor: pointer; letter-spacing: 0; text-transform: none;
-    transition: color .12s;
+    transition: color .12s; min-height: 0;
   }
-  .player-chip .chip-toggle:hover { color: var(--text); }
   .add-player-row { display: flex; gap: 8px; margin-top: 10px; }
   .add-player-row input { flex: 1; }
 
-  /* ── Hand entry table ── */
-  .hand-table { width: 100%; border-collapse: collapse; }
-  .hand-table th { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
-  .hand-table td { padding: 10px 12px; border-bottom: 1px solid rgba(58,52,40,.5); vertical-align: middle; }
-  .hand-table tr:last-child td { border-bottom: none; }
-  .hand-table tr.winner-row td { background: rgba(201,168,76,.04); }
-  .hand-table tr.inactive-row td { opacity: .35; pointer-events: none; }
+  /* ── Hand entry — mobile-first card layout ── */
+  .hand-entries { display: flex; flex-direction: column; gap: 10px; }
 
-  .player-cell { font-family: 'Playfair Display', serif; font-size: 15px; }
+  .entry-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+    transition: border-color .15s;
+  }
+  .entry-card.winner-card { border-color: var(--gold-dim); background: rgba(201,168,76,.04); }
 
-  .status-group { display: flex; gap: 4px; }
-  .status-btn { padding: 5px 10px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.5px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); border-radius: 4px; transition: all .12s; }
-  .status-btn:hover { border-color: var(--gold-dim); color: var(--text); }
+  .entry-card-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; gap: 8px;
+  }
+  .entry-player-name {
+    font-family: 'Playfair Display', serif; font-size: 16px; flex: 1;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .entry-player-suit { color: var(--text-dim); font-size: 14px; }
+
+  /* winner radio styled as a toggle chip */
+  .winner-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; }
+  .winner-toggle input[type="radio"] { display: none; }
+  .winner-toggle-label {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px;
+    text-transform: uppercase; padding: 5px 10px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-mute); transition: all .15s; cursor: pointer;
+    display: flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .winner-toggle input:checked + .winner-toggle-label {
+    border-color: var(--gold); background: rgba(201,168,76,.15); color: var(--gold-lt);
+  }
+
+  .entry-card-bottom {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .status-group { display: flex; gap: 4px; flex: 1; }
+  .status-btn {
+    flex: 1; padding: 7px 4px; font-family: 'DM Mono', monospace; font-size: 10px;
+    letter-spacing: 0.3px; border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-dim); border-radius: 4px; transition: all .12s; min-height: 0;
+    text-align: center;
+  }
+  .status-btn:active { transform: scale(.97); }
   .status-btn.active-seen   { background: rgba(39,174,96,.15);  border-color: var(--green);    color: var(--green-lt); }
   .status-btn.active-unseen { background: rgba(192,57,43,.15);  border-color: var(--red);      color: var(--red-lt); }
   .status-btn.active-duplee { background: rgba(201,168,76,.12); border-color: var(--gold-dim); color: var(--gold); }
   .status-btn.status-disabled { opacity: .25; cursor: not-allowed; }
 
-  .maal-input { width: 80px !important; text-align: right; font-family: 'DM Mono', monospace; font-size: 15px; }
-
-  .winner-radio { display: flex; justify-content: center; }
-  .winner-radio input[type="radio"] { display: none; }
-  .winner-radio label { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 50%; cursor: pointer; color: var(--text-mute); font-size: 14px; transition: all .12s; margin: 0; }
-  .winner-radio input:checked + label { border-color: var(--gold); background: rgba(201,168,76,.15); color: var(--gold-lt); }
+  .maal-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .maal-label { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); white-space: nowrap; }
+  .maal-input {
+    width: 72px !important; text-align: right; font-family: 'DM Mono', monospace;
+    font-size: 16px; padding: 7px 10px !important;
+  }
 
   /* ── Better Game toggle ── */
   .better-game-toggle {
     display: flex; align-items: center; gap: 14px;
     background: var(--surface2); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 14px 18px; margin-bottom: 16px;
-    cursor: pointer; transition: border-color .15s;
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px;
+    cursor: pointer; transition: border-color .15s; user-select: none;
   }
-  .better-game-toggle:hover { border-color: var(--gold-dim); }
+  .better-game-toggle:hover  { border-color: var(--gold-dim); }
+  .better-game-toggle:active { background: rgba(201,168,76,.05); }
   .better-game-toggle.active { border-color: var(--gold); background: rgba(201,168,76,.08); }
-  .better-game-toggle .bg-checkbox {
-    width: 20px; height: 20px; border: 2px solid var(--border); border-radius: 4px;
+  .bg-checkbox {
+    width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 5px;
     display: flex; align-items: center; justify-content: center;
     font-size: 13px; flex-shrink: 0; transition: all .15s;
   }
   .better-game-toggle.active .bg-checkbox { border-color: var(--gold); background: var(--gold); color: #0f0e0b; }
-  .better-game-toggle .bg-label { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
-  .better-game-toggle.active .bg-label { color: var(--gold-lt); }
-  .better-game-toggle .bg-desc { font-size: 11px; color: var(--text-mute); margin-top: 2px; font-family: 'DM Mono', monospace; }
-  .better-game-toggle.active .bg-desc { color: var(--gold-dim); }
   .bg-text { flex: 1; }
+  .bg-label { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+  .better-game-toggle.active .bg-label { color: var(--gold-lt); }
+  .bg-desc { font-size: 11px; color: var(--text-mute); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .better-game-toggle.active .bg-desc { color: var(--gold-dim); }
 
   /* ── Scoreboard ── */
-  .scoreboard-wrap { overflow-x: auto; }
-  .score-table { width: 100%; border-collapse: collapse; min-width: 500px; }
-  .score-table th { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); padding: 10px 14px; text-align: center; border-bottom: 2px solid var(--border); white-space: nowrap; }
-  .score-table th.player-th { font-family: 'Playfair Display', serif; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--gold-lt); }
+  .scoreboard-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .score-table { width: 100%; border-collapse: collapse; min-width: 0; }
+  .score-table th {
+    font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-dim); padding: 8px 10px;
+    text-align: center; border-bottom: 2px solid var(--border); white-space: nowrap;
+  }
+  .score-table th.player-th {
+    font-family: 'Playfair Display', serif; font-size: 12px; text-transform: none; letter-spacing: 0; color: var(--gold-lt);
+  }
   .score-table th.player-th.inactive-th { color: var(--text-mute); font-style: italic; }
-  .score-table td { padding: 9px 14px; text-align: center; border-bottom: 1px solid rgba(58,52,40,.5); font-family: 'DM Mono', monospace; font-size: 13px; }
-  .score-table .hand-label { font-family: 'Lora', serif; font-size: 12px; color: var(--text-dim); text-align: left; white-space: nowrap; }
-  .score-table tfoot td { border-top: 2px solid var(--border); border-bottom: none; font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; padding: 12px 14px; }
+  .score-table td {
+    padding: 8px 10px; text-align: center;
+    border-bottom: 1px solid rgba(58,52,40,.5);
+    font-family: 'DM Mono', monospace; font-size: 13px;
+  }
+  .score-table .hand-label {
+    font-family: 'Lora', serif; font-size: 12px; color: var(--text-dim);
+    text-align: left; white-space: nowrap;
+  }
+  .score-table tfoot td {
+    border-top: 2px solid var(--border); border-bottom: none;
+    font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; padding: 10px;
+  }
   .pts-pos { color: var(--green-lt); }
   .pts-neg { color: var(--red-lt); }
   .pts-zero { color: var(--text-dim); }
   .total-best { color: var(--gold-lt) !important; }
-  .winner-icon { font-size: 14px; }
+  .winner-icon { font-size: 12px; }
+  .better-badge {
+    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .5px;
+    background: rgba(201,168,76,.15); border: 1px solid var(--gold-dim); color: var(--gold);
+    border-radius: 3px; padding: 1px 4px; margin-left: 4px; vertical-align: middle;
+  }
 
-  /* Better game badge in scoreboard */
-  .better-badge { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .5px; background: rgba(201,168,76,.15); border: 1px solid var(--gold-dim); color: var(--gold); border-radius: 3px; padding: 1px 5px; margin-left: 5px; vertical-align: middle; }
-
+  /* expandable hand rows */
   .hand-expand-row { background: var(--surface2); display: none; }
   .hand-expand-row.open { display: table-row; }
-  .hand-expand-row td { padding: 12px 20px !important; }
+  .hand-expand-row td { padding: 10px 14px !important; }
   .clickable-row { cursor: pointer; }
   .clickable-row:hover td { background: rgba(201,168,76,.03); }
 
-  .hand-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-top: 4px; }
-  .hand-detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; font-family: 'DM Mono', monospace; font-size: 11px; }
-  .hand-detail-card .hd-name { color: var(--gold-lt); font-size: 13px; margin-bottom: 4px; font-family: 'Playfair Display', serif; }
-  .hand-detail-card .hd-row { display: flex; justify-content: space-between; color: var(--text-dim); }
+  /* hand detail cards */
+  .hand-detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+  .hand-detail-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 9px 12px;
+    font-family: 'DM Mono', monospace; font-size: 11px;
+  }
+  .hand-detail-card .hd-name { color: var(--gold-lt); font-size: 12px; margin-bottom: 4px; font-family: 'Playfair Display', serif; }
+  .hand-detail-card .hd-row { display: flex; justify-content: space-between; color: var(--text-dim); margin-top: 2px; }
   .hand-detail-card .hd-row span:last-child { color: var(--text); }
 
-  .row { display: flex; gap: 12px; flex-wrap: wrap; }
-  .row > * { flex: 1; min-width: 140px; }
-  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  /* ── Misc ── */
+  .section-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .section-actions > * { flex: 1; min-width: 120px; }
 
-  .error-msg { background: rgba(192,57,43,.12); border: 1px solid rgba(192,57,43,.4); border-radius: var(--radius); color: var(--red-lt); padding: 12px 16px; font-family: 'DM Mono', monospace; font-size: 12px; margin-top: 12px; display: none; }
+  .error-msg {
+    background: rgba(192,57,43,.12); border: 1px solid rgba(192,57,43,.4);
+    border-radius: var(--radius); color: var(--red-lt); padding: 11px 14px;
+    font-family: 'DM Mono', monospace; font-size: 12px; margin-top: 10px; display: none;
+  }
   .error-msg.visible { display: block; }
-  .success-msg { background: rgba(39,174,96,.1); border: 1px solid rgba(39,174,96,.3); border-radius: var(--radius); color: var(--green-lt); padding: 12px 16px; font-family: 'DM Mono', monospace; font-size: 12px; margin-top: 12px; display: none; }
+  .success-msg {
+    background: rgba(39,174,96,.1); border: 1px solid rgba(39,174,96,.3);
+    border-radius: var(--radius); color: var(--green-lt); padding: 11px 14px;
+    font-family: 'DM Mono', monospace; font-size: 12px; margin-top: 10px; display: none;
+  }
   .success-msg.visible { display: block; }
 
-  .breadcrumb { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-  .breadcrumb a { color: var(--gold-dim); cursor: pointer; text-decoration: none; }
-  .breadcrumb a:hover { color: var(--gold); }
-
-  .empty-state { text-align: center; padding: 40px; color: var(--text-dim); font-style: italic; }
-  .empty-state .big-suit { font-size: 40px; opacity: .2; display: block; margin-bottom: 12px; }
-
-  .section-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-dim); font-style: italic; }
+  .empty-state .big-suit { font-size: 36px; opacity: .2; display: block; margin-bottom: 10px; }
 
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .loading-overlay { position: fixed; inset: 0; background: rgba(15,14,11,.6); display: none; align-items: center; justify-content: center; z-index: 100; }
   .loading-overlay.visible { display: flex; }
-  .loading-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 40px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text-dim); display: flex; align-items: center; gap: 10px; }
+  .loading-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 36px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text-dim); display: flex; align-items: center; gap: 10px; }
+
+  /* ── Desktop enhancements (≥ 600px) ── */
+  @media (min-width: 600px) {
+    :root { --pad: 24px; --card-pad: 24px; }
+    header { padding: 36px 0 28px; margin-bottom: 28px; }
+
+    /* restore suit decorations on wider screens */
+    header::before, header::after { font-size: 13px; letter-spacing: 6px; }
+
+    .entry-card-bottom { flex-wrap: nowrap; }
+
+    .score-table th { font-size: 10px; padding: 10px 12px; }
+    .score-table td  { padding: 9px 12px; font-size: 13px; }
+    .hand-detail-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+    .section-actions > * { flex: 0 1 auto; min-width: 0; }
+  }
+
+  /* ── Narrow screens: hide suit decorations ── */
+  @media (max-width: 400px) {
+    header::before, header::after { display: none; }
+    .maal-input { width: 60px !important; }
+  }
 </style>
 </head>
 <body>
@@ -258,7 +434,7 @@
 
   <!-- HOME -->
   <div id="screen-home" class="screen active">
-    <div class="card-header" style="margin-bottom:20px">
+    <div class="card-header">
       <h2 style="margin:0"><span class="suit">♠</span> Saved Games</h2>
       <button class="btn-primary btn-sm" onclick="showScreen('screen-new-game')">+ New Game</button>
     </div>
@@ -272,11 +448,11 @@
     <div class="card">
       <div class="field">
         <label>Game Name</label>
-        <input type="text" id="new-game-name" placeholder="e.g. Friday Night, Dashain 2081…">
+        <input type="text" id="new-game-name" placeholder="e.g. Friday Night, Dashain 2081…" autocomplete="off">
       </div>
       <div class="field">
         <label>Number of Players</label>
-        <div class="player-count-row" id="player-count-row">
+        <div class="player-count-row">
           <button class="count-btn" data-n="3" onclick="setPlayerCount(3)">3</button>
           <button class="count-btn" data-n="4" onclick="setPlayerCount(4)">4</button>
           <button class="count-btn" data-n="5" onclick="setPlayerCount(5)">5</button>
@@ -298,32 +474,32 @@
   <!-- GAME SCREEN -->
   <div id="screen-game" class="screen">
     <div class="breadcrumb"><a onclick="showScreen('screen-home')">Home</a> › <span id="game-breadcrumb">Game</span></div>
-    <div class="card-header" style="margin-bottom:20px">
-      <h2 id="game-title" style="margin:0"><span class="suit">♥</span> Game</h2>
-      <button class="btn-primary btn-sm" onclick="showAddHand()">+ Add Hand</button>
+    <div class="card-header">
+      <h2 style="margin:0"><span class="suit">♥</span> <span id="game-title-text">Game</span></h2>
+      <button class="btn-primary btn-sm" onclick="showAddHand()">+ Hand</button>
     </div>
 
-    <!-- Players card -->
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-header" style="margin-bottom:12px">
+    <!-- Players -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-header">
         <h3 style="margin:0">Players</h3>
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mute)">click to toggle active</span>
+        <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-mute);text-transform:uppercase;letter-spacing:1px">tap to toggle</span>
       </div>
       <div id="player-roster" class="player-roster"></div>
       <div id="add-player-section">
         <div class="add-player-row">
-          <input type="text" id="new-player-name" placeholder="New player name…" maxlength="40">
-          <button class="btn-secondary btn-sm" onclick="addPlayer()">Add Player</button>
+          <input type="text" id="new-player-name" placeholder="Add player…" maxlength="40" autocomplete="off">
+          <button class="btn-secondary btn-sm" onclick="addPlayer()">Add</button>
         </div>
         <div id="add-player-error" class="error-msg" style="margin-top:8px"></div>
       </div>
     </div>
 
     <!-- Scoreboard -->
-    <div class="card" id="scoreboard-card">
+    <div class="card">
       <h3>Scoreboard</h3>
       <div class="scoreboard-wrap">
-        <table class="score-table" id="score-table">
+        <table class="score-table">
           <thead id="score-thead"></thead>
           <tbody id="score-tbody"></tbody>
           <tfoot id="score-tfoot"></tfoot>
@@ -331,7 +507,7 @@
       </div>
       <div id="scoreboard-empty" class="empty-state" style="display:none">
         <span class="big-suit">♦</span>
-        No hands played yet. Add the first hand above.
+        No hands yet — add the first one!
       </div>
     </div>
   </div>
@@ -346,10 +522,6 @@
     <h2><span class="suit">♦</span> Add Hand</h2>
 
     <div class="card">
-      <p style="color:var(--text-dim);font-size:13px;margin-bottom:20px;">
-        Active players only. Select winner, set status, and enter Maal.
-      </p>
-
       <!-- Better Game toggle -->
       <div id="better-game-toggle" class="better-game-toggle" onclick="toggleBetterGame()">
         <div class="bg-checkbox" id="bg-checkbox"></div>
@@ -359,19 +531,8 @@
         </div>
       </div>
 
-      <div style="overflow-x:auto">
-        <table class="hand-table">
-          <thead>
-            <tr>
-              <th>Player</th>
-              <th>Winner</th>
-              <th>Status</th>
-              <th style="text-align:right">Maal</th>
-            </tr>
-          </thead>
-          <tbody id="hand-entry-tbody"></tbody>
-        </table>
-      </div>
+      <!-- Per-player entry cards -->
+      <div class="hand-entries" id="hand-entries"></div>
 
       <div id="add-hand-error" class="error-msg"></div>
       <div id="add-hand-success" class="success-msg"></div>
@@ -385,7 +546,7 @@
 
 </div>
 
-<!-- Delete confirmation dialog -->
+<!-- Delete confirmation — slides up from bottom -->
 <div id="dialog-overlay" class="dialog-overlay">
   <div class="dialog-box">
     <div class="dialog-title">Delete Game?</div>
@@ -396,47 +557,61 @@
     </div>
   </div>
 </div>
+
+<script>
 const API = 'https://marriagecalculator-production.up.railway.app/api';
-let currentGame = null;
-let handEntries = [];
+let currentGame  = null;
+let handEntries  = [];
 let isBetterGame = false;
+let _pendingDeleteId = null;
 
 const SUITS = ['♠','♥','♦','♣','♠','♥'];
 
-// ── Utilities ──────────────────────────────────────────
+// ── Utilities ────────────────────────────────────────────────────────────────
+
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
   if (id === 'screen-home') loadGameList();
 }
-function loading(on) { document.getElementById('loading-overlay').classList.toggle('visible', on); }
+
+function loading(on) {
+  document.getElementById('loading-overlay').classList.toggle('visible', on);
+}
+
 function showError(elId, msg) {
   const el = document.getElementById(elId);
   el.textContent = msg; el.classList.add('visible');
   setTimeout(() => el.classList.remove('visible'), 6000);
 }
+
 function showSuccess(elId, msg) {
   const el = document.getElementById(elId);
   el.textContent = msg; el.classList.add('visible');
 }
+
 async function apiFetch(url, opts = {}) {
   const res = await fetch(API + url, { headers: { 'Content-Type': 'application/json' }, ...opts });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'API error');
   return data;
 }
+
 function fmtDate(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
+
 function ptsClass(n) { return n > 0 ? 'pts-pos' : n < 0 ? 'pts-neg' : 'pts-zero'; }
+
 function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Home ───────────────────────────────────────────────
-let _pendingDeleteId = null;
+// ── Home / Game List ─────────────────────────────────────────────────────────
 
 async function loadGameList() {
   loading(true);
@@ -463,6 +638,8 @@ async function loadGameList() {
   finally { loading(false); }
 }
 
+// ── Delete dialog ────────────────────────────────────────────────────────────
+
 function promptDelete(gameId, gameName) {
   _pendingDeleteId = gameId;
   document.getElementById('dialog-msg').textContent =
@@ -487,38 +664,41 @@ async function confirmDelete() {
   finally { loading(false); }
 }
 
-// Close dialog on overlay click
 document.getElementById('dialog-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeDialog();
 });
 
-// ── New Game ───────────────────────────────────────────
+// ── New Game ─────────────────────────────────────────────────────────────────
+
 let selectedPlayerCount = 0;
 
 function setPlayerCount(n) {
   selectedPlayerCount = n;
-  document.querySelectorAll('.count-btn').forEach(b => b.classList.toggle('selected', parseInt(b.dataset.n) === n));
+  document.querySelectorAll('.count-btn').forEach(b =>
+    b.classList.toggle('selected', parseInt(b.dataset.n) === n));
   const section = document.getElementById('player-names-section');
-  const inputs = document.getElementById('player-inputs');
+  const inputs  = document.getElementById('player-inputs');
   section.style.display = 'block';
   inputs.innerHTML = Array.from({length: n}, (_, i) => `
     <div class="player-input-row">
       <span class="suit-badge">${SUITS[i]}</span>
-      <input type="text" placeholder="Player ${i+1} name" id="pname-${i}">
+      <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off">
     </div>`).join('');
   document.getElementById('pname-0').focus();
 }
 
 async function createGame() {
   const name = document.getElementById('new-game-name').value.trim();
-  if (!name) { showError('new-game-error', 'Please enter a game name.'); return; }
-  if (!selectedPlayerCount) { showError('new-game-error', 'Please select a number of players.'); return; }
+  if (!name)              { showError('new-game-error', 'Please enter a game name.'); return; }
+  if (!selectedPlayerCount) { showError('new-game-error', 'Please select the number of players.'); return; }
+
   const players = [];
   for (let i = 0; i < selectedPlayerCount; i++) {
     const v = (document.getElementById(`pname-${i}`)?.value || '').trim();
     if (!v) { showError('new-game-error', `Please enter a name for Player ${i+1}.`); return; }
     players.push(v);
   }
+
   loading(true);
   try {
     const game = await apiFetch('/games', { method: 'POST', body: JSON.stringify({ name, players }) });
@@ -528,7 +708,8 @@ async function createGame() {
   finally { loading(false); }
 }
 
-// ── Game Screen ────────────────────────────────────────
+// ── Game Screen ───────────────────────────────────────────────────────────────
+
 async function openGame(gameId) {
   loading(true);
   try {
@@ -544,31 +725,28 @@ async function openGame(gameId) {
 }
 
 function renderGameScreen(game, board) {
-  document.getElementById('game-title').innerHTML = `<span class="suit">♥</span> ${esc(game.name)}`;
+  document.getElementById('game-title-text').textContent = game.name;
   document.getElementById('game-breadcrumb').textContent = game.name;
   document.getElementById('hand-game-breadcrumb').textContent = game.name;
   document.getElementById('new-player-name').value = '';
-
   renderPlayerRoster(game.players);
   renderScoreboard(game.players, board);
 }
 
-function renderPlayerRoster(players) {
-  const roster = document.getElementById('player-roster');
-  const addSection = document.getElementById('add-player-section');
-  const activeCount = players.filter(p => p.is_active).length;
-  const canAdd = players.length < 6;
+// ── Players ───────────────────────────────────────────────────────────────────
 
+function renderPlayerRoster(players) {
+  const roster    = document.getElementById('player-roster');
+  const addSection = document.getElementById('add-player-section');
   roster.innerHTML = players.map(p => `
     <div class="player-chip ${p.is_active ? '' : 'inactive'}" id="chip-${p.id}">
       <span class="chip-name">${esc(p.name)}</span>
       <button class="chip-toggle" onclick="togglePlayerActive(${p.id}, ${p.is_active})"
-        title="${p.is_active ? 'Deactivate player' : 'Activate player'}">
+        title="${p.is_active ? 'Deactivate' : 'Activate'}">
         ${p.is_active ? '●' : '○'}
       </button>
     </div>`).join('');
-
-  addSection.style.display = canAdd ? 'block' : 'none';
+  addSection.style.display = players.length < 6 ? 'block' : 'none';
 }
 
 async function togglePlayerActive(playerId, currentlyActive) {
@@ -578,10 +756,8 @@ async function togglePlayerActive(playerId, currentlyActive) {
       method: 'PATCH',
       body: JSON.stringify({ is_active: !currentlyActive }),
     });
-    // Update in currentGame
     const p = currentGame.players.find(p => p.id === playerId);
     if (p) p.is_active = player.is_active;
-    // Re-fetch scoreboard for updated totals display
     const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
     renderGameScreen(currentGame, board);
   } catch(e) { showError('add-player-error', e.message); }
@@ -606,7 +782,8 @@ async function addPlayer() {
   finally { loading(false); }
 }
 
-// ── Scoreboard ─────────────────────────────────────────
+// ── Scoreboard ────────────────────────────────────────────────────────────────
+
 function renderScoreboard(players, board) {
   const hands  = board.hands;
   const totals = board.totals;
@@ -614,11 +791,13 @@ function renderScoreboard(players, board) {
   const tbody  = document.getElementById('score-tbody');
   const tfoot  = document.getElementById('score-tfoot');
   const empty  = document.getElementById('scoreboard-empty');
-  const table  = document.getElementById('score-table');
+  const table  = document.querySelector('.score-table');
 
   thead.innerHTML = `<tr>
     <th style="text-align:left">Hand</th>
-    ${players.map(p => `<th class="player-th ${p.is_active ? '' : 'inactive-th'}">${esc(p.name)}${p.is_active ? '' : ' ·'}</th>`).join('')}
+    ${players.map(p =>
+      `<th class="player-th ${p.is_active ? '' : 'inactive-th'}">${esc(p.name)}</th>`
+    ).join('')}
   </tr>`;
 
   if (!hands.length) {
@@ -637,12 +816,12 @@ function renderScoreboard(players, board) {
       const e = byPlayer[p.id];
       if (!e) return `<td style="color:var(--text-mute)">—</td>`;
       const pts = e.points;
-      const icon = e.is_winner ? ' <span class="winner-icon">👑</span>' : '';
+      const icon = e.is_winner ? ` <span class="winner-icon">👑</span>` : '';
       return `<td class="${ptsClass(pts)}">${pts > 0 ? '+'+pts : pts}${icon}</td>`;
     }).join('');
     return `
       <tr class="clickable-row" onclick="toggleHandDetail('${rowId}')">
-        <td class="hand-label">Hand ${h.hand_number}${betterBadge} <span style="color:var(--text-mute);font-size:10px">▸</span></td>
+        <td class="hand-label">H${h.hand_number}${betterBadge} <span style="color:var(--text-mute);font-size:9px">▸</span></td>
         ${cells}
       </tr>
       <tr class="hand-expand-row" id="${rowId}">
@@ -651,42 +830,45 @@ function renderScoreboard(players, board) {
   }).join('');
 
   const maxTotal = Math.max(...players.map(p => totals[p.id] ?? 0));
-  const totalCells = players.map(p => {
-    const t = totals[p.id] ?? 0;
-    const cls = [ptsClass(t), t === maxTotal && t > 0 ? 'total-best' : ''].filter(Boolean).join(' ');
-    return `<td class="${cls}">${t > 0 ? '+'+t : t}</td>`;
-  }).join('');
   tfoot.innerHTML = `<tr>
-    <td style="text-align:left;color:var(--text-dim);font-size:12px;font-family:'DM Mono',monospace">TOTAL</td>
-    ${totalCells}
+    <td style="text-align:left;color:var(--text-dim);font-size:11px;font-family:'DM Mono',monospace">TOT</td>
+    ${players.map(p => {
+      const t = totals[p.id] ?? 0;
+      const cls = [ptsClass(t), t === maxTotal && t > 0 ? 'total-best' : ''].filter(Boolean).join(' ');
+      return `<td class="${cls}">${t > 0 ? '+'+t : t}</td>`;
+    }).join('')}
   </tr>`;
 }
 
 function renderHandDetail(hand, players) {
   const byPlayer = {};
   (hand.entries || []).forEach(e => { byPlayer[e.player_id] = e; });
-  const betterNote = hand.better_game ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">★ Better Game — points doubled</div>` : '';
+  const betterNote = hand.better_game
+    ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">★ Better Game — points doubled</div>`
+    : '';
   const cards = players.map(p => {
     const e = byPlayer[p.id];
-    if (!e) return `<div class="hand-detail-card" style="opacity:.3"><div class="hd-name">${esc(p.name)}</div><div class="hd-row"><span>Not in hand</span></div></div>`;
+    if (!e) return `<div class="hand-detail-card" style="opacity:.3">
+      <div class="hd-name">${esc(p.name)}</div>
+      <div class="hd-row"><span>Not in hand</span></div></div>`;
     const pts = e.points;
     return `
       <div class="hand-detail-card">
         <div class="hd-name">${esc(p.name)} ${e.is_winner ? '👑' : ''}</div>
         <div class="hd-row"><span>Status</span><span>${e.status.charAt(0).toUpperCase()+e.status.slice(1)}</span></div>
         <div class="hd-row"><span>Maal</span><span>${e.maal}</span></div>
-        <div class="hd-row"><span>Points</span><span class="${ptsClass(pts)}">${pts > 0 ? '+'+pts : pts}</span></div>
+        <div class="hd-row"><span>Pts</span><span class="${ptsClass(pts)}">${pts > 0 ? '+'+pts : pts}</span></div>
       </div>`;
   }).join('');
   return `${betterNote}<div class="hand-detail-grid">${cards}</div>`;
 }
 
 function toggleHandDetail(rowId) {
-  const row = document.getElementById(rowId);
-  if (row) row.classList.toggle('open');
+  document.getElementById(rowId)?.classList.toggle('open');
 }
 
-// ── Add Hand ───────────────────────────────────────────
+// ── Add Hand ──────────────────────────────────────────────────────────────────
+
 function showAddHand() {
   if (!currentGame) return;
   const activePlayers = currentGame.players.filter(p => p.is_active);
@@ -699,7 +881,7 @@ function showAddHand() {
   }));
   isBetterGame = false;
   renderBetterGameToggle();
-  renderHandEntryTable();
+  renderHandEntries();
   document.getElementById('add-hand-error').classList.remove('visible');
   document.getElementById('add-hand-success').classList.remove('visible');
   showScreen('screen-add-hand');
@@ -717,31 +899,42 @@ function renderBetterGameToggle() {
   cb.textContent = isBetterGame ? '✓' : '';
 }
 
-function renderHandEntryTable() {
-  const tbody = document.getElementById('hand-entry-tbody');
-  tbody.innerHTML = handEntries.map((e, i) => `
-    <tr id="entry-row-${i}" class="${e.is_winner ? 'winner-row' : ''}">
-      <td class="player-cell">${SUITS[i % SUITS.length]} ${esc(e.name)}</td>
-      <td>
-        <div class="winner-radio">
-          <input type="radio" name="winner" id="win-${i}" value="${i}" ${e.is_winner ? 'checked' : ''} onchange="setWinner(${i})">
-          <label for="win-${i}" title="Set as winner">♔</label>
+function renderHandEntries() {
+  const container = document.getElementById('hand-entries');
+  container.innerHTML = handEntries.map((e, i) => {
+    const isWinner = e.is_winner;
+    return `
+      <div class="entry-card ${isWinner ? 'winner-card' : ''}" id="entry-card-${i}">
+        <div class="entry-card-top">
+          <div class="entry-player-name">
+            <span class="entry-player-suit">${SUITS[i % SUITS.length]}</span>
+            ${esc(e.name)}
+          </div>
+          <div class="winner-toggle">
+            <input type="radio" name="winner" id="win-${i}" value="${i}"
+              ${isWinner ? 'checked' : ''} onchange="setWinner(${i})">
+            <label class="winner-toggle-label" for="win-${i}">
+              ${isWinner ? '👑 Winner' : 'Winner?'}
+            </label>
+          </div>
         </div>
-      </td>
-      <td>
-        <div class="status-group">
-          ${['seen','unseen','duplee'].map(s => {
-            const disabled = e.is_winner && s === 'unseen';
-            return `<button class="status-btn ${e.status === s ? 'active-'+s : ''} ${disabled ? 'status-disabled' : ''}"
-              ${disabled ? 'disabled title="Winner cannot be Unseen"' : `onclick="setStatus(${i}, '${s}')"`}>${s}</button>`;
-          }).join('')}
+        <div class="entry-card-bottom">
+          <div class="status-group">
+            ${['seen','unseen','duplee'].map(s => {
+              const disabled = isWinner && s === 'unseen';
+              return `<button class="status-btn ${e.status === s ? 'active-'+s : ''} ${disabled ? 'status-disabled' : ''}"
+                ${disabled ? 'disabled title="Winner cannot be Unseen"' : `onclick="setStatus(${i},'${s}')"`}>${s}</button>`;
+            }).join('')}
+          </div>
+          <div class="maal-group">
+            <span class="maal-label">Maal</span>
+            <input type="number" class="maal-input" value="${e.maal}" min="0"
+              id="maal-${i}" inputmode="numeric" pattern="[0-9]*"
+              onchange="setMaal(${i},this.value)" oninput="setMaal(${i},this.value)">
+          </div>
         </div>
-      </td>
-      <td>
-        <input type="number" class="maal-input" value="${e.maal}" min="0"
-          id="maal-${i}" onchange="setMaal(${i}, this.value)" oninput="setMaal(${i}, this.value)">
-      </td>
-    </tr>`).join('');
+      </div>`;
+  }).join('');
 }
 
 function setWinner(idx) {
@@ -749,13 +942,13 @@ function setWinner(idx) {
     e.is_winner = (i === idx);
     if (i === idx && e.status === 'unseen') e.status = 'seen';
   });
-  renderHandEntryTable();
+  renderHandEntries();
 }
 
 function setStatus(idx, status) {
   if (status === 'unseen' && handEntries[idx].is_winner) return;
   handEntries[idx].status = status;
-  renderHandEntryTable();
+  renderHandEntries();
 }
 
 function setMaal(idx, val) {
@@ -769,13 +962,16 @@ function goToCurrentGame() {
 }
 
 async function finalizeHand() {
+  // Sync maal values from inputs before submitting
   handEntries.forEach((e, i) => {
     const inp = document.getElementById(`maal-${i}`);
     if (inp) { const n = parseInt(inp.value, 10); e.maal = isNaN(n) || n < 0 ? 0 : n; }
   });
+
   if (!handEntries.some(e => e.is_winner)) {
     showError('add-hand-error', 'Please select a winner.'); return;
   }
+
   loading(true);
   try {
     await apiFetch(`/games/${currentGame.id}/hands`, {
@@ -792,7 +988,8 @@ async function finalizeHand() {
   } catch(e) { showError('add-hand-error', e.message); }
   finally { loading(false); }
 }
-// Load game list immediately on startup
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
 loadGameList();
 </script>
 </body>
