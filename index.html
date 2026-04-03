@@ -1394,7 +1394,12 @@ async function submitAdminPassword() {
     if (!res.ok) throw new Error(data.error || 'Wrong password.');
     _adminPassword = pw;
     closeAdminDialog();
-    renderAdminScreen(data);
+    try {
+      renderAdminScreen(data);
+    } catch(renderErr) {
+      document.getElementById('admin-user-list').innerHTML =
+        `<div class="error-msg visible">Render error: ${renderErr.message}</div>`;
+    }
     showScreen('screen-admin');
   } catch(e) {
     showError('admin-pw-error', e.message);
@@ -1409,7 +1414,8 @@ document.getElementById('admin-dialog-overlay').addEventListener('click', e => {
 });
 
 function renderAdminScreen(data) {
-  const { users, total_games } = data;
+  const users      = data.users || [];
+  const total_games = data.total_games ?? 0;
 
   document.getElementById('admin-user-count').textContent =
     `${users.length} user${users.length !== 1 ? 's' : ''} · ${total_games} game${total_games !== 1 ? 's' : ''}`;
@@ -1431,7 +1437,7 @@ function renderAdminScreen(data) {
         <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-mute)" id="admin-chevron-${u.id}">▸</span>
       </div>
       <div class="admin-user-games" id="admin-games-${u.id}">
-        ${u.games.length ? u.games.map(g => `
+        ${(u.games || []).length ? (u.games || []).map(g => `
           <div class="admin-game-row" onclick="adminOpenGame(${g.id}, ${u.id})">
             <div style="flex:1">
               <div class="admin-game-name">${esc(g.name)}</div>
