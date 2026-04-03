@@ -10,7 +10,8 @@ from flask import Blueprint, request, jsonify
 from game_model import (create_game, list_games, get_game, get_scoreboard,
                          add_player, set_player_active, delete_game,
                          get_or_create_join_code, join_game_by_code,
-                         get_game_members, user_can_access)
+                         get_game_members, user_can_access,
+                         rename_player, delete_player)
 from hand_model import finalize_hand, get_hand
 from user_model import register, login
 from database import get_connection
@@ -238,6 +239,43 @@ def route_set_player_active(player_id):
     except ValueError as exc:
         return _err(str(exc))
     return jsonify(player)
+
+@api.put("/players/<int:player_id>/name")
+def route_rename_player(player_id):
+    if (e := _require_auth()): return e
+    from database import get_connection
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("SELECT game_id FROM players WHERE id = %s", (player_id,))
+    row = cur.fetchone(); cur.close(); conn.close()
+    if not row: return _err("Player not found.", 404)
+    game = get_game(row["game_id"])
+    if not game: return _err("Game not found.", 404)
+    if (e := _require_owner(game)): return e
+    data = request.get_json(force=True)
+    name = (data.get("name") or "").strip()
+    if not name: return _err("Name is required.")
+    try:
+        player = rename_player(player_id, name)
+    except ValueError as exc:
+        return _err(str(exc))
+    return jsonify(player)
+
+@api.delete("/players/<int:player_id>")
+def route_delete_player(player_id):
+    if (e := _require_auth()): return e
+    from database import get_connection
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("SELECT game_id FROM players WHERE id = %s", (player_id,))
+    row = cur.fetchone(); cur.close(); conn.close()
+    if not row: return _err("Player not found.", 404)
+    game = get_game(row["game_id"])
+    if not game: return _err("Game not found.", 404)
+    if (e := _require_owner(game)): return e
+    try:
+        delete_player(player_id)
+    except ValueError as exc:
+        return _err(str(exc))
+    return jsonify({"deleted": player_id})
 
 
 # ── Hands ──────────────────────────────────────────────────────────────────────

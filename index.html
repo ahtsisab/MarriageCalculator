@@ -309,6 +309,13 @@ label {
   color: var(--text-dim); cursor: pointer; letter-spacing: 0; text-transform: none;
   transition: color .12s; min-height: 0;
 }
+.player-chip .chip-action {
+  background: none; border: none; font-size: 11px; padding: 0 2px;
+  color: var(--text-mute); cursor: pointer; letter-spacing: 0; text-transform: none;
+  transition: color .12s; min-height: 0; line-height: 1;
+}
+.player-chip .chip-action:hover { color: var(--text-dim); }
+.player-chip .chip-action.chip-delete:hover { color: var(--red-lt); }
 .add-player-row { display: flex; gap: 8px; margin-top: 10px; }
 .add-player-row input { flex: 1; }
 
@@ -1032,7 +1039,7 @@ async function openGame(gameId) {
     document.getElementById('player-toggle-hint').style.display = isOwner && game.players.length > 3 ? '' : 'none';
     document.getElementById('add-player-section').style.display = isOwner && game.players.length < 6 ? 'block' : 'none';
 
-    renderPlayerRoster(game.players, isOwner);
+    renderPlayerRoster(game.players, isOwner, board);
     renderScoreboard(game.players, board);
     showScreen('screen-game');
   } catch(e) { alert('Could not load game: ' + e.message); }
@@ -1040,15 +1047,27 @@ async function openGame(gameId) {
 }
 
 // ── Players ───────────────────────────────────────────────────────────────────
-function renderPlayerRoster(players, isOwner) {
-  document.getElementById('player-roster').innerHTML = players.map(p => `
+function renderPlayerRoster(players, isOwner, board) {
+  // Players who have appeared in at least one hand entry
+  const playedIds = new Set(
+    (board?.hands || []).flatMap(h => (h.entries || []).map(e => e.player_id))
+  );
+
+  document.getElementById('player-roster').innerHTML = players.map(p => {
+    const canDelete = isOwner && !playedIds.has(p.id);
+    return `
     <div class="player-chip ${p.is_active ? '' : 'inactive'}">
       <span class="chip-name">${esc(p.name)}</span>
-      ${isOwner ? `<button class="chip-toggle" onclick="togglePlayerActive(${p.id}, ${p.is_active})"
-        title="${p.is_active ? 'Deactivate' : 'Activate'}">${p.is_active ? '●' : '○'}</button>` : ''}
-    </div>`).join('');
-  // add-player-section visibility is set in openGame based on isOwner
+      ${isOwner ? `
+        <button class="chip-action" onclick="startRenamePlayer(${p.id}, '${esc(p.name)}')" title="Rename">✏️</button>
+        <button class="chip-toggle" onclick="togglePlayerActive(${p.id}, ${p.is_active})"
+          title="${p.is_active ? 'Deactivate' : 'Activate'}">${p.is_active ? '●' : '○'}</button>
+        ${canDelete ? `<button class="chip-action chip-delete" onclick="doDeletePlayer(${p.id}, '${esc(p.name)}')" title="Delete">✕</button>` : ''}
+      ` : ''}
+    </div>`;
+  }).join('');
 }
+
 async function togglePlayerActive(pid, currently) {
   loading(true);
   try {
@@ -1056,11 +1075,48 @@ async function togglePlayerActive(pid, currently) {
     const p = currentGame.players.find(p => p.id === pid);
     if (p) p.is_active = player.is_active;
     const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
-    renderPlayerRoster(currentGame.players, !!currentGame.is_owner);
+    renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
     renderScoreboard(currentGame.players, board);
   } catch(e) { showError('add-player-error', e.message); }
   finally { loading(false); }
 }
+
+function startRenamePlayer(pid, currentName) {
+  const newName = prompt(`Rename "${currentName}" to:`, currentName);
+  if (!newName || newName.trim() === currentName) return;
+  doRenamePlayer(pid, newName.trim());
+}
+
+async function doRenamePlayer(pid, name) {
+  loading(true);
+  try {
+    const player = await apiFetch(`/players/${pid}/name`, { method:'PUT', body: JSON.stringify({ name }) });
+    const p = currentGame.players.find(p => p.id === pid);
+    if (p) p.name = player.name;
+    const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
+    renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
+    renderScoreboard(currentGame.players, board);
+  } catch(e) { alert('Could not rename: ' + e.message); }
+  finally { loading(false); }
+}
+
+async function doDeletePlayer(pid, name) {
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  loading(true);
+  try {
+    await apiFetch(`/players/${pid}`, { method:'DELETE' });
+    currentGame.players = currentGame.players.filter(p => p.id !== pid);
+    const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
+    renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
+    renderScoreboard(currentGame.players, board);
+    document.getElementById('add-player-section').style.display =
+      currentGame.is_owner && currentGame.players.length < 6 ? 'block' : 'none';
+    document.getElementById('player-toggle-hint').style.display =
+      currentGame.is_owner && currentGame.players.length > 3 ? '' : 'none';
+  } catch(e) { alert('Could not delete: ' + e.message); }
+  finally { loading(false); }
+}
+
 async function addPlayer() {
   const name = document.getElementById('new-player-name').value.trim();
   if (!name) { showError('add-player-error', 'Enter a player name.'); return; }
@@ -1070,7 +1126,7 @@ async function addPlayer() {
     player.is_active = true; currentGame.players.push(player);
     document.getElementById('new-player-name').value = '';
     const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
-    renderPlayerRoster(currentGame.players, !!currentGame.is_owner);
+    renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
     renderScoreboard(currentGame.players, board);
     document.getElementById('add-player-section').style.display =
       currentGame.is_owner && currentGame.players.length < 6 ? 'block' : 'none';

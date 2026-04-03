@@ -126,6 +126,64 @@ def get_game_members(game_id: int) -> list[dict]:
     return members
 
 
+def rename_player(player_id: int, name: str) -> dict:
+    """Rename a player. Returns updated player dict."""
+    name = name.strip()
+    if not name:
+        raise ValueError("Player name cannot be empty.")
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM players WHERE id = %s", (player_id,))
+    if not cur.fetchone():
+        cur.close(); conn.close()
+        raise ValueError("Player not found.")
+    cur.execute("UPDATE players SET name = %s WHERE id = %s", (name, player_id))
+    conn.commit()
+    cur.execute("SELECT id, name, position, is_active FROM players WHERE id = %s", (player_id,))
+    player = dict(cur.fetchone())
+    player["is_active"] = bool(player["is_active"])
+    cur.close(); conn.close()
+    return player
+
+
+def delete_player(player_id: int) -> None:
+    """
+    Delete a player only if they have never appeared in any hand entry.
+    Also validates the game would still have at least 3 players.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT game_id FROM players WHERE id = %s", (player_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise ValueError("Player not found.")
+    game_id = row["game_id"]
+
+    # Check player has no hand entries
+    cur.execute(
+        "SELECT COUNT(*) AS cnt FROM hand_entries WHERE player_id = %s",
+        (player_id,),
+    )
+    if cur.fetchone()["cnt"] > 0:
+        cur.close(); conn.close()
+        raise ValueError("Cannot delete a player who has already played hands.")
+
+    # Ensure at least 3 players remain
+    cur.execute(
+        "SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s AND id != %s",
+        (game_id, player_id),
+    )
+    if cur.fetchone()["cnt"] < 3:
+        cur.close(); conn.close()
+        raise ValueError("Cannot delete: game must always have at least 3 players.")
+
+    cur.execute("DELETE FROM players WHERE id = %s", (player_id,))
+    conn.commit()
+    cur.close(); conn.close()
+
+
 def add_player(game_id: int, name: str) -> dict:
     conn = get_connection()
     cur = conn.cursor()
