@@ -15,11 +15,16 @@ def create_app() -> Flask:
 
     allowed_origins = os.environ.get(
         "CORS_ORIGINS",
-        "http://localhost:5000",
+        "http://localhost:5000,https://ahtsisab.github.io",
     ).split(",")
-    CORS(app, supports_credentials=True, origins=allowed_origins)
+    CORS(app, supports_credentials=True, origins=[o.strip() for o in allowed_origins])
 
     app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
+
+    # Cross-origin cookie config (GitHub Pages → Railway)
+    app.config["SESSION_COOKIE_SAMESITE"] = "None"
+    app.config["SESSION_COOKIE_SECURE"]   = True
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
 
     init_db()
     app.register_blueprint(api)
