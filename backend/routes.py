@@ -346,6 +346,26 @@ def _require_admin():
         return _err("Unauthorized.", 401)
 
 
+@api.get("/admin/game/<int:game_id>")
+def route_admin_get_game(game_id):
+    if (e := _require_admin()): return e
+    game = get_game(game_id)
+    if not game: return _err("Game not found.", 404)
+    game["is_owner"] = False
+    return jsonify(game)
+
+
+@api.get("/admin/game/<int:game_id>/scoreboard")
+def route_admin_scoreboard(game_id):
+    if (e := _require_admin()): return e
+    game = get_game(game_id)
+    if not game: return _err("Game not found.", 404)
+    board = get_scoreboard(game_id)
+    board["players"] = game["players"]
+    board["game"]    = {"id": game["id"], "name": game["name"]}
+    return jsonify(board)
+
+
 @api.get("/admin/overview")
 def route_admin_overview():
     if (e := _require_admin()): return e
@@ -354,7 +374,7 @@ def route_admin_overview():
     cur  = conn.cursor()
 
     cur.execute("""
-        SELECT u.id, ANY_VALUE(u.name) as name, ANY_VALUE(u.created_at) as created_at,
+        SELECT u.id, u.name, u.created_at,
                COUNT(DISTINCT g.id) AS game_count,
                COUNT(DISTINCT h.id) AS hand_count
         FROM users u
@@ -366,13 +386,11 @@ def route_admin_overview():
     users = [dict(r) for r in cur.fetchall()]
 
     cur.execute("""
-        SELECT g.id, ANY_VALUE(g.name) as name, ANY_VALUE(g.created_at) as created_at, ANY_VALUE(g.join_code) as join_code,
-               ANY_VALUE(u.name) AS owner_name,
-               COUNT(DISTINCT h.id)  AS hand_count,
-               COUNT(DISTINCT gm.user_id) AS member_count
+        SELECT g.id, g.name, g.created_at, g.join_code, g.user_id,
+               COUNT(DISTINCT h.id)        AS hand_count,
+               COUNT(DISTINCT gm.user_id)  AS member_count
         FROM games g
-        LEFT JOIN users u ON u.id = g.user_id
-        LEFT JOIN hands h ON h.game_id = g.id
+        LEFT JOIN hands h  ON h.game_id  = g.id
         LEFT JOIN game_members gm ON gm.game_id = g.id
         GROUP BY g.id
         ORDER BY g.created_at DESC
@@ -381,4 +399,14 @@ def route_admin_overview():
 
     cur.close()
     conn.close()
-    return jsonify({"users": users, "games": games})
+
+    # Nest games under their owner
+    games_by_user = {}
+    for g in games:
+        g["join_code"] = g["join_code"] or None
+        games_by_user.setdefault(g["user_id"], []).append(g)
+
+    for u in users:
+        u["games"] = games_by_user.get(u["id"], [])
+
+    return jsonify({"users": users, "total_games": len(games)})

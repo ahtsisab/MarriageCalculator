@@ -545,7 +545,21 @@ body::before { display: none; }
 }
 .entry-suit-pip.red { color: var(--red-lt); opacity: .25; }
 
-/* ── Admin table ── */
+/* ── Admin user game sublist ── */
+.admin-user-games {
+  display: none; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px;
+}
+.admin-user-games.open { display: block; }
+.admin-game-row {
+  display: flex; align-items: center; gap: 10px; padding: 7px 0;
+  border-bottom: 1px solid rgba(58,52,40,.4); cursor: pointer;
+  transition: background .12s; border-radius: 4px;
+}
+.admin-game-row:last-child { border-bottom: none; }
+.admin-game-row:hover { background: rgba(201,168,76,.04); }
+.admin-game-name { font-family: 'Lora', serif; font-size: 14px; flex: 1; }
+.admin-game-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); }
+
 .admin-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .admin-table { width: 100%; border-collapse: collapse; min-width: 400px; font-family: 'DM Mono', monospace; font-size: 12px; }
 .admin-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--border); color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
@@ -716,36 +730,11 @@ body::before { display: none; }
   <!-- ADMIN SCREEN -->
   <div id="screen-admin" class="screen">
     <div class="breadcrumb"><a onclick="showScreen('screen-home')">Home</a> › Admin</div>
-    <h2><span class="suit">♣</span> Superuser View</h2>
-
-    <div class="card" style="margin-bottom:12px">
-      <div class="card-header">
-        <h3 style="margin:0">Users <span id="admin-user-count" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mute)"></span></h3>
-      </div>
-      <div class="admin-table-wrap">
-        <table class="admin-table" id="admin-users-table">
-          <thead><tr>
-            <th>Name</th><th>Joined</th><th>Games</th><th>Hands</th>
-          </tr></thead>
-          <tbody id="admin-users-body"></tbody>
-        </table>
-      </div>
+    <div class="card-header">
+      <h2 style="margin:0"><span class="suit">♣</span> Users</h2>
+      <span id="admin-user-count" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mute)"></span>
     </div>
-
-    <div class="card">
-      <div class="card-header">
-        <h3 style="margin:0">Games <span id="admin-game-count" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mute)"></span></h3>
-      </div>
-      <div class="admin-table-wrap">
-        <table class="admin-table" id="admin-games-table">
-          <thead><tr>
-            <th>Game</th><th>Owner</th><th>Created</th><th>Hands</th><th>Members</th><th>Code</th>
-          </tr></thead>
-          <tbody id="admin-games-body"></tbody>
-        </table>
-      </div>
-    </div>
-
+    <div id="admin-user-list" class="game-list"></div>
     <div id="admin-error" class="error-msg" style="margin-top:12px"></div>
   </div>
 </div>
@@ -1418,28 +1407,78 @@ document.getElementById('admin-dialog-overlay').addEventListener('click', e => {
 });
 
 function renderAdminScreen(data) {
-  const { users, games } = data;
+  const { users, total_games } = data;
 
-  document.getElementById('admin-user-count').textContent = `(${users.length})`;
-  document.getElementById('admin-game-count').textContent = `(${games.length})`;
+  document.getElementById('admin-user-count').textContent =
+    `${users.length} user${users.length !== 1 ? 's' : ''} · ${total_games} game${total_games !== 1 ? 's' : ''}`;
 
-  document.getElementById('admin-users-body').innerHTML = users.map(u => `
-    <tr>
-      <td class="admin-name">${esc(u.name)}</td>
-      <td style="color:var(--text-dim)">${fmtDate(u.created_at)}</td>
-      <td class="admin-num">${u.game_count}</td>
-      <td class="admin-num">${u.hand_count}</td>
-    </tr>`).join('') || '<tr><td colspan="4" style="color:var(--text-mute);text-align:center;padding:20px">No users yet</td></tr>';
+  const list = document.getElementById('admin-user-list');
+  if (!users.length) {
+    list.innerHTML = '<div class="empty-state"><span class="big-suit">♣</span>No users yet.</div>';
+    return;
+  }
 
-  document.getElementById('admin-games-body').innerHTML = games.map(g => `
-    <tr>
-      <td class="admin-name">${esc(g.name)}</td>
-      <td style="color:var(--text-dim)">${esc(g.owner_name || '—')}</td>
-      <td style="color:var(--text-dim)">${fmtDate(g.created_at)}</td>
-      <td class="admin-num">${g.hand_count}</td>
-      <td class="admin-num">${g.member_count}</td>
-      <td>${g.join_code ? `<span class="admin-code">${g.join_code}</span>` : '<span style="color:var(--text-mute)">—</span>'}</td>
-    </tr>`).join('') || '<tr><td colspan="6" style="color:var(--text-mute);text-align:center;padding:20px">No games yet</td></tr>';
+  list.innerHTML = users.map(u => `
+    <div class="game-item" style="flex-direction:column;align-items:stretch;cursor:default">
+      <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer"
+           onclick="toggleAdminUser(${u.id})">
+        <div>
+          <div class="game-item-name">${esc(u.name)}</div>
+          <div class="game-item-meta">${fmtDate(u.created_at)} · ${u.game_count} game${u.game_count !== 1 ? 's' : ''} · ${u.hand_count} hand${u.hand_count !== 1 ? 's' : ''}</div>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-mute)" id="admin-chevron-${u.id}">▸</span>
+      </div>
+      <div class="admin-user-games" id="admin-games-${u.id}">
+        ${u.games.length ? u.games.map(g => `
+          <div class="admin-game-row" onclick="adminOpenGame(${g.id}, ${u.id})">
+            <div style="flex:1">
+              <div class="admin-game-name">${esc(g.name)}</div>
+              <div class="admin-game-meta">${g.hand_count} hand${g.hand_count !== 1 ? 's' : ''}${g.member_count ? ` · ${g.member_count} member${g.member_count !== 1 ? 's' : ''}` : ''}</div>
+            </div>
+            ${g.join_code ? `<span class="admin-code">${g.join_code}</span>` : ''}
+          </div>`).join('')
+        : `<div style="color:var(--text-mute);font-family:'DM Mono',monospace;font-size:11px;padding:8px 0">No games yet</div>`}
+      </div>
+    </div>`).join('');
+}
+
+function toggleAdminUser(uid) {
+  const panel   = document.getElementById(`admin-games-${uid}`);
+  const chevron = document.getElementById(`admin-chevron-${uid}`);
+  const open = panel.classList.toggle('open');
+  chevron.textContent = open ? '▾' : '▸';
+}
+
+async function adminOpenGame(gameId, userId) {
+  // Temporarily impersonate the user's view by fetching game with admin token
+  // but displaying it normally — we just open the game as if we were that user
+  loading(true);
+  try {
+    const res  = await fetch(API + `/admin/game/${gameId}`, {
+      headers: { 'Authorization': `Bearer ${_adminPassword}` },
+    });
+    const game = await res.json();
+    if (!res.ok) throw new Error(game.error || 'Failed');
+
+    const boardRes  = await fetch(API + `/admin/game/${gameId}/scoreboard`, {
+      headers: { 'Authorization': `Bearer ${_adminPassword}` },
+    });
+    const board = await boardRes.json();
+    if (!boardRes.ok) throw new Error(board.error || 'Failed');
+
+    // Render as read-only view
+    currentGame = { ...game, is_owner: false };
+    document.getElementById('game-title-text').textContent     = game.name;
+    document.getElementById('game-breadcrumb').textContent      = game.name;
+    document.getElementById('hand-game-breadcrumb').textContent = game.name;
+    document.getElementById('add-hand-btn').style.display       = 'none';
+    document.getElementById('add-player-section').style.display = 'none';
+    document.getElementById('new-player-name').value = '';
+    renderPlayerRoster(game.players, false, board);
+    renderScoreboard(game.players, board);
+    showScreen('screen-game');
+  } catch(e) { alert('Could not load game: ' + e.message); }
+  finally { loading(false); }
 }
 
 // ── Boot: restore session from stored token ───────────────────────────────────
