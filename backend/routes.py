@@ -366,7 +366,7 @@ def route_admin_overview():
     users = [dict(r) for r in cur.fetchall()]
 
     cur.execute("""
-        SELECT g.id, g.name, g.created_at, g.join_code,
+        SELECT g.id, ANY_VALUE(g.name) as name, ANY_VALUE(g.created_at) as created_at, ANY_VALUE(g.join_code) as join_code,
                u.name AS owner_name,
                COUNT(DISTINCT h.id)  AS hand_count,
                COUNT(DISTINCT gm.user_id) AS member_count
