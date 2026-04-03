@@ -886,7 +886,7 @@ function renderUserBadge() {
   if (!currentUser) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = `
     <div class="user-badge">
-      <button class="admin-link" onclick="openAdminDialog()" title="Admin">⚙</button>
+      ${currentUser.is_admin ? `<button class="admin-link" onclick="openAdminDialog()" title="Admin">⚙</button>` : ''}
       <span class="user-name">${esc(currentUser.name)}</span>
       <button class="logout-btn" onclick="doLogout()" title="Sign out">✕</button>
     </div>`;
@@ -901,7 +901,7 @@ function switchAuthTab(tab) {
 
 function _handleAuthResponse(resp) {
   localStorage.setItem('mc-token', resp.token);
-  currentUser = { id: resp.id, name: resp.name };
+  currentUser = { id: resp.id, name: resp.name, is_admin: !!resp.is_admin };
   renderUserBadge();
   showScreen('screen-home');
 }
@@ -1362,9 +1362,11 @@ async function submitAdminPassword() {
   if (!pw) return;
   loading(true);
   try {
-    const data = await fetch(API + '/admin/overview', {
-      headers: { 'Authorization': `Bearer ${pw}` }
-    }).then(r => { if (!r.ok) throw new Error('Wrong password'); return r.json(); });
+    const res  = await fetch(API + '/admin/overview', {
+      headers: { 'Authorization': `Bearer ${pw}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Wrong password.');
     _adminPassword = pw;
     closeAdminDialog();
     renderAdminScreen(data);
@@ -1412,7 +1414,7 @@ function renderAdminScreen(data) {
   if (!token) { showScreen('screen-auth'); return; }
   try {
     const user = await apiFetch('/auth/me');
-    currentUser = { id: user.id, name: user.name };
+    currentUser = { id: user.id, name: user.name, is_admin: !!user.is_admin };
     renderUserBadge();
     showScreen('screen-home');
   } catch(_) {

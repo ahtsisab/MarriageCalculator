@@ -21,11 +21,6 @@ def create_app() -> Flask:
 
     app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
 
-    # Cross-origin cookie config (GitHub Pages → Railway)
-    app.config["SESSION_COOKIE_SAMESITE"] = "None"
-    app.config["SESSION_COOKIE_SECURE"]   = True
-    app.config["SESSION_COOKIE_HTTPONLY"] = True
-
     init_db()
     app.register_blueprint(api)
 

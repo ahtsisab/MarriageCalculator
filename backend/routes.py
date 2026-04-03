@@ -26,6 +26,11 @@ def _secret() -> bytes:
     return os.environ.get("SECRET_KEY", "dev-secret-change-in-production").encode()
 
 
+def _is_admin(user_name: str) -> bool:
+    admin = os.environ.get("ADMIN_USERNAME", "")
+    return bool(admin) and admin.lower() == user_name.lower()
+
+
 def _make_token(user_id: int, user_name: str) -> str:
     payload = json.dumps({"uid": user_id, "name": user_name, "exp": int(time.time()) + TOKEN_TTL})
     b64 = base64.urlsafe_b64encode(payload.encode()).decode()
@@ -106,7 +111,7 @@ def route_register():
     except ValueError as e:
         return _err(str(e))
     token = _make_token(user["id"], user["name"])
-    return jsonify({"id": user["id"], "name": user["name"], "token": token}), 201
+    return jsonify({"id": user["id"], "name": user["name"], "token": token, "is_admin": _is_admin(user["name"])}), 201
 
 
 @api.post("/auth/login")
@@ -117,7 +122,7 @@ def route_login():
     except ValueError as e:
         return _err(str(e))
     token = _make_token(user["id"], user["name"])
-    return jsonify({"id": user["id"], "name": user["name"], "token": token})
+    return jsonify({"id": user["id"], "name": user["name"], "token": token, "is_admin": _is_admin(user["name"])})
 
 
 @api.post("/auth/logout")
@@ -130,7 +135,7 @@ def route_me():
     u = _current_user()
     if not u:
         return _err("Not logged in.", 401)
-    return jsonify({"id": u["uid"], "name": u["name"]})
+    return jsonify({"id": u["uid"], "name": u["name"], "is_admin": _is_admin(u["name"])})
 
 
 # ── Games ──────────────────────────────────────────────────────────────────────
