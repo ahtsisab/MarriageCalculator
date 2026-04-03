@@ -12,15 +12,13 @@ from routes import api
 
 def create_app() -> Flask:
     app = Flask(__name__, static_folder="../frontend", static_url_path="")
-    CORS(app)
+    CORS(app, supports_credentials=True)
 
-    # Initialize DB schema on startup
+    app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
+
     init_db()
-
-    # Register API blueprint
     app.register_blueprint(api)
 
-    # Serve the frontend SPA for any non-API route
     @app.get("/")
     def serve_index():
         return send_from_directory(app.static_folder, "index.html")

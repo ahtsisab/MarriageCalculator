@@ -61,9 +61,7 @@ class _SQLiteConn:
         self._conn.execute("PRAGMA foreign_keys = ON")
         self.autocommit = False
 
-    def cursor(self):
-        return _SQLiteCursor(self._conn.cursor())
-
+    def cursor(self):   return _SQLiteCursor(self._conn.cursor())
     def commit(self):   self._conn.commit()
     def rollback(self): self._conn.rollback()
     def close(self):    self._conn.close()
@@ -116,7 +114,6 @@ def insert_returning(cur, conn, sql_pg: str, sql_sqlite: str, params: tuple) -> 
 
 
 def where_in(column: str, values: list):
-    """Return (sql_fragment, params) for a WHERE IN / ANY clause."""
     if DB_BACKEND == "postgres":
         return f"{column} = ANY(%s)", (values,)
     ph = ",".join(["%s"] * len(values))
@@ -126,8 +123,15 @@ def where_in(column: str, values: list):
 # ── Schema ────────────────────────────────────────────────────────────────────
 
 _SCHEMA_PG = [
+    """CREATE TABLE IF NOT EXISTS users (
+        id         SERIAL PRIMARY KEY,
+        name       TEXT NOT NULL UNIQUE,
+        pin_hash   TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    )""",
     """CREATE TABLE IF NOT EXISTS games (
         id         SERIAL PRIMARY KEY,
+        user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
         name       TEXT NOT NULL,
         created_at TIMESTAMPTZ DEFAULT NOW(),
         is_active  BOOLEAN DEFAULT TRUE
@@ -161,8 +165,15 @@ _SCHEMA_PG = [
 ]
 
 _SCHEMA_SQLITE = [
+    """CREATE TABLE IF NOT EXISTS users (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        name       TEXT NOT NULL UNIQUE,
+        pin_hash   TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+    )""",
     """CREATE TABLE IF NOT EXISTS games (
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
         name       TEXT NOT NULL,
         created_at TEXT DEFAULT (datetime('now')),
         is_active  INTEGER DEFAULT 1
@@ -195,16 +206,18 @@ _SCHEMA_SQLITE = [
     )""",
 ]
 
-# Migrations: safe ALTER TABLE statements (IF NOT EXISTS equivalent via try/except)
 _MIGRATIONS_PG = [
     "ALTER TABLE players ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
     "ALTER TABLE hands   ADD COLUMN IF NOT EXISTS better_game BOOLEAN DEFAULT FALSE",
+    "CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name TEXT NOT NULL UNIQUE, pin_hash TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())",
+    "ALTER TABLE games ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE",
 ]
 
 _MIGRATIONS_SQLITE = [
-    # SQLite doesn't support IF NOT EXISTS on ALTER; we catch errors instead
     "ALTER TABLE players ADD COLUMN is_active INTEGER DEFAULT 1",
     "ALTER TABLE hands   ADD COLUMN better_game INTEGER DEFAULT 0",
+    "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, pin_hash TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')))",
+    "ALTER TABLE games ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE",
 ]
 
 
@@ -215,7 +228,8 @@ def _run_migrations(cur, conn):
             cur.execute(stmt)
             conn.commit()
         except Exception:
-            conn.rollback() if DB_BACKEND == "postgres" else None
+            if DB_BACKEND == "postgres":
+                conn.rollback()
 
 
 def _ensure_postgres_db():

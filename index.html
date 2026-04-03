@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
@@ -7,417 +7,437 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg:        #0f0e0b;
-    --surface:   #1a1814;
-    --surface2:  #242018;
-    --border:    #3a3428;
-    --gold:      #c9a84c;
-    --gold-lt:   #e2c47a;
-    --gold-dim:  #6b5520;
-    --red:       #c0392b;
-    --red-lt:    #e74c3c;
-    --green:     #27ae60;
-    --green-lt:  #2ecc71;
-    --text:      #f0ead8;
-    --text-dim:  #8a7d60;
-    --text-mute: #4a4030;
-    --radius:    8px;
-    --shadow:    0 4px 32px rgba(0,0,0,.6);
-    --pad:       16px;        /* base page padding */
-    --card-pad:  18px;        /* card inner padding */
-  }
+/* ═══════════════════════════════════════════════════════
+   THEMES
+═══════════════════════════════════════════════════════ */
+:root, [data-theme="dark"] {
+  --bg:          #0f0e0b;
+  --surface:     #1a1814;
+  --surface2:    #242018;
+  --border:      #3a3428;
+  --gold:        #c9a84c;
+  --gold-lt:     #e2c47a;
+  --gold-dim:    #6b5520;
+  --red:         #c0392b;
+  --red-lt:      #e74c3c;
+  --green:       #27ae60;
+  --green-lt:    #2ecc71;
+  --text:        #f0ead8;
+  --text-dim:    #8a7d60;
+  --text-mute:   #4a4030;
+  --input-bg:    #242018;
+  --shadow:      0 4px 32px rgba(0,0,0,.6);
+}
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[data-theme="light"] {
+  --bg:          #f5f0e8;
+  --surface:     #ffffff;
+  --surface2:    #f0ebe0;
+  --border:      #d4c9b0;
+  --gold:        #9a6f20;
+  --gold-lt:     #7a5010;
+  --gold-dim:    #c4a060;
+  --red:         #c0392b;
+  --red-lt:      #a93226;
+  --green:       #1e8449;
+  --green-lt:    #1a7a42;
+  --text:        #2c2416;
+  --text-dim:    #7a6a4a;
+  --text-mute:   #b0a080;
+  --input-bg:    #f8f4ec;
+  --shadow:      0 2px 16px rgba(0,0,0,.1);
+}
 
-  body {
-    font-family: 'Lora', serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    /* prevent iOS tap highlight */
-    -webkit-tap-highlight-color: transparent;
-    background-image:
-      radial-gradient(ellipse at 20% 10%, rgba(201,168,76,.05) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 90%, rgba(192,57,43,.04) 0%, transparent 50%);
-  }
+/* ═══════════════════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  #app { max-width: 900px; margin: 0 auto; padding: var(--pad) var(--pad) 80px; }
+body {
+  font-family: 'Lora', serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .2s, color .2s;
+  background-image:
+    radial-gradient(ellipse at 20% 10%, rgba(201,168,76,.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(192,57,43,.04) 0%, transparent 50%);
+}
+[data-theme="light"] body {
+  background-image:
+    radial-gradient(ellipse at 20% 10%, rgba(180,140,60,.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(192,57,43,.04) 0%, transparent 50%);
+}
 
-  /* ── Header ── */
-  header {
-    text-align: center;
-    padding: 24px 0 20px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 24px;
-    position: relative;
-  }
-  /* hide suit decorations on narrow screens */
-  header::before, header::after {
-    content: '♠ ♥ ♣ ♦';
-    position: absolute; top: 50%; transform: translateY(-50%);
-    color: var(--gold-dim); font-size: 11px; letter-spacing: 5px;
-  }
-  header::before { left: 0; } header::after { right: 0; }
+#app { max-width: 900px; margin: 0 auto; padding: 16px 16px 80px; }
 
-  .logo {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(26px, 7vw, 48px); font-weight: 900;
-    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-lt) 50%, var(--gold) 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    letter-spacing: 2px; line-height: 1;
-  }
-  .logo-sub {
-    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 3px;
-    text-transform: uppercase; color: var(--text-dim); margin-top: 5px;
-  }
+/* ── Header ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 0 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+  gap: 10px;
+}
+.header-logo { text-align: center; flex: 1; }
+.logo {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(22px, 6vw, 40px); font-weight: 900;
+  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-lt) 50%, var(--gold) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  letter-spacing: 2px; line-height: 1;
+}
+.logo-sub {
+  font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--text-dim); margin-top: 3px;
+}
+.header-actions {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
 
-  /* ── Screens ── */
-  .screen { display: none; animation: fadeIn .2s ease; }
-  .screen.active { display: block; }
-  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+/* ── Theme toggle ── */
+.theme-toggle {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 20px;
+  padding: 6px 10px; cursor: pointer; font-size: 14px; line-height: 1;
+  transition: all .15s; min-height: 0;
+  display: flex; align-items: center; gap: 5px;
+  font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim);
+  letter-spacing: .5px;
+}
+.theme-toggle:hover { border-color: var(--gold-dim); color: var(--text); }
 
-  /* ── Typography ── */
-  h2 {
-    font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
-    color: var(--gold-lt); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
-  }
-  h2 .suit { font-size: 16px; }
-  h3 {
-    font-family: 'Playfair Display', serif; font-size: 14px; color: var(--text-dim);
-    margin-bottom: 10px; font-weight: 400; font-style: italic;
-  }
+/* ── User badge in header ── */
+.user-badge {
+  font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim);
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 5px 10px; white-space: nowrap;
+}
+.user-badge .user-name { color: var(--gold); max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+.user-badge .logout-btn {
+  background: none; border: none; font-size: 12px; color: var(--text-mute);
+  cursor: pointer; padding: 0; min-height: 0; letter-spacing: 0; text-transform: none;
+  transition: color .12s;
+}
+.user-badge .logout-btn:hover { color: var(--red-lt); }
 
-  /* ── Cards ── */
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: var(--card-pad); box-shadow: var(--shadow);
-  }
-  .card + .card { margin-top: 12px; }
-  .card-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
-    gap: 8px;
-  }
-  .card-header h2, .card-header h3 { margin: 0; }
+/* ── Screens ── */
+.screen { display: none; animation: fadeIn .2s ease; }
+.screen.active { display: block; }
+@keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
 
-  /* ── Buttons ── */
-  button {
-    cursor: pointer; font-family: 'DM Mono', monospace; border: none;
-    border-radius: var(--radius); font-size: 12px; letter-spacing: 1px;
-    text-transform: uppercase; transition: all .15s;
-    /* larger touch targets */
-    min-height: 40px;
-    -webkit-appearance: none;
-  }
-  .btn-primary {
-    background: linear-gradient(135deg, #a07830, var(--gold)); color: #0f0e0b;
-    padding: 12px 24px; font-weight: 500; font-size: 13px;
-    box-shadow: 0 2px 12px rgba(201,168,76,.3);
-  }
-  .btn-primary:hover  { filter: brightness(1.1); transform: translateY(-1px); }
-  .btn-primary:active { transform: none; filter: brightness(.95); }
-  .btn-secondary {
-    background: transparent; color: var(--gold);
-    border: 1px solid var(--gold-dim); padding: 10px 20px;
-  }
-  .btn-secondary:hover { border-color: var(--gold); background: rgba(201,168,76,.06); }
-  .btn-danger {
-    background: transparent; color: var(--red-lt);
-    border: 1px solid rgba(192,57,43,.4); padding: 8px 16px;
-  }
-  .btn-danger:hover { background: rgba(192,57,43,.1); }
-  .btn-ghost { background: transparent; color: var(--text-dim); padding: 8px 12px; font-size: 11px; }
-  .btn-ghost:hover { color: var(--text); }
-  .btn-sm { padding: 8px 14px; font-size: 11px; min-height: 36px; }
+/* ── Typography ── */
+h2 {
+  font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
+  color: var(--gold-lt); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+}
+h2 .suit { font-size: 16px; }
+h3 {
+  font-family: 'Playfair Display', serif; font-size: 14px; color: var(--text-dim);
+  margin-bottom: 10px; font-weight: 400; font-style: italic;
+}
 
-  /* full-width button helper */
-  .btn-full { width: 100%; }
+/* ── Cards ── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 18px; box-shadow: var(--shadow);
+  transition: background .2s, border-color .2s;
+}
+.card + .card { margin-top: 12px; }
+.card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); gap: 8px;
+}
+.card-header h2, .card-header h3 { margin: 0; }
 
-  /* ── Inputs ── */
-  input[type="text"], input[type="number"] {
-    background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
-    color: var(--text); font-family: 'Lora', serif; font-size: 16px; /* 16px prevents iOS zoom */
-    padding: 11px 14px; width: 100%; transition: border-color .15s; outline: none;
-    -webkit-appearance: none;
-  }
-  input:focus { border-color: var(--gold-dim); }
-  input::placeholder { color: var(--text-mute); }
-  label {
-    display: block; font-family: 'DM Mono', monospace; font-size: 10px;
-    text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 6px;
-  }
-  .field { margin-bottom: 14px; }
+/* ── Buttons ── */
+button {
+  cursor: pointer; font-family: 'DM Mono', monospace; border: none;
+  border-radius: 8px; font-size: 12px; letter-spacing: 1px;
+  text-transform: uppercase; transition: all .15s;
+  min-height: 40px; -webkit-appearance: none;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #a07830, var(--gold)); color: #0f0e0b;
+  padding: 11px 22px; font-weight: 500; font-size: 13px;
+  box-shadow: 0 2px 12px rgba(201,168,76,.25);
+}
+[data-theme="light"] .btn-primary { color: #fff; }
+.btn-primary:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+.btn-primary:active { transform: none; filter: brightness(.95); }
+.btn-secondary {
+  background: transparent; color: var(--gold);
+  border: 1px solid var(--gold-dim); padding: 10px 20px;
+}
+.btn-secondary:hover { border-color: var(--gold); background: rgba(201,168,76,.06); }
+.btn-danger {
+  background: transparent; color: var(--red-lt);
+  border: 1px solid rgba(192,57,43,.4); padding: 9px 16px;
+}
+.btn-danger:hover { background: rgba(192,57,43,.1); }
+.btn-ghost { background: transparent; color: var(--text-dim); padding: 9px 12px; font-size: 11px; }
+.btn-ghost:hover { color: var(--text); }
+.btn-sm { padding: 7px 14px; font-size: 11px; min-height: 36px; }
+.btn-full { width: 100%; }
 
-  /* ── Breadcrumb ── */
-  .breadcrumb {
-    font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim);
-    margin-bottom: 16px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  }
-  .breadcrumb a { color: var(--gold-dim); cursor: pointer; text-decoration: none; }
-  .breadcrumb a:hover { color: var(--gold); }
+/* ── Inputs ── */
+input[type="text"], input[type="number"], input[type="password"] {
+  background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font-family: 'Lora', serif; font-size: 16px;
+  padding: 11px 14px; width: 100%; transition: border-color .15s, background .2s; outline: none;
+  -webkit-appearance: none;
+}
+input:focus { border-color: var(--gold-dim); }
+input::placeholder { color: var(--text-mute); }
+label {
+  display: block; font-family: 'DM Mono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 6px;
+}
+.field { margin-bottom: 14px; }
 
-  /* ── Game list ── */
-  .game-list { display: flex; flex-direction: column; gap: 8px; }
-  .game-item {
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 14px 16px; display: flex; justify-content: space-between; align-items: center;
-    cursor: pointer; transition: border-color .15s, background .15s; gap: 10px;
-  }
-  .game-item:hover  { border-color: var(--gold-dim); background: var(--surface2); }
-  .game-item:active { background: var(--surface2); }
-  .game-item-name { font-family: 'Playfair Display', serif; font-size: 16px; }
-  .game-item-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); margin-top: 3px; }
-  .game-item-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .game-item-badge {
-    font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px;
-    border-radius: 20px; background: rgba(201,168,76,.1); color: var(--gold);
-    border: 1px solid var(--gold-dim); white-space: nowrap;
-  }
-  .game-item-delete {
-    background: none; border: none; color: var(--text-mute); font-size: 16px;
-    padding: 6px 8px; letter-spacing: 0; text-transform: none; border-radius: 4px;
-    line-height: 1; transition: color .15s, background .15s; min-height: 0;
-    /* make tap target bigger without changing visual size */
-    position: relative;
-  }
-  .game-item-delete::after { content: ''; position: absolute; inset: -6px; }
-  .game-item-delete:hover { color: var(--red-lt); background: rgba(192,57,43,.1); }
+/* PIN input — large digits */
+.pin-input {
+  letter-spacing: 8px; font-family: 'DM Mono', monospace !important;
+  font-size: 22px !important; text-align: center;
+}
 
-  /* ── Dialog ── */
-  .dialog-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,.75);
-    display: none; align-items: flex-end; justify-content: center; z-index: 200;
-  }
-  .dialog-overlay.visible { display: flex; }
-  .dialog-box {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius) var(--radius) 0 0;
-    padding: 24px var(--pad) calc(24px + env(safe-area-inset-bottom));
-    width: 100%; max-width: 500px; box-shadow: var(--shadow);
-    animation: slideUp .2s ease;
-  }
-  @keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
-  .dialog-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--gold-lt); margin-bottom: 8px; }
-  .dialog-msg { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; line-height: 1.5; }
-  .dialog-actions { display: flex; gap: 10px; }
-  .dialog-actions .btn-danger { flex: 1; }
-  .dialog-actions .btn-ghost  { flex: 1; }
+/* ── Breadcrumb ── */
+.breadcrumb {
+  font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim);
+  margin-bottom: 16px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.breadcrumb a { color: var(--gold-dim); cursor: pointer; text-decoration: none; }
+.breadcrumb a:hover { color: var(--gold); }
 
-  /* ── Player count picker ── */
-  .player-count-row { display: flex; gap: 8px; }
-  .count-btn {
-    flex: 1; background: var(--surface2); border: 1px solid var(--border);
-    color: var(--text-dim); padding: 12px 8px;
-    font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
-    border-radius: var(--radius); transition: all .15s;
-  }
-  .count-btn:hover   { border-color: var(--gold-dim); color: var(--gold); }
-  .count-btn.selected { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,.1); }
+/* ── Auth screen ── */
+.auth-tabs {
+  display: flex; gap: 0; margin-bottom: 20px;
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+}
+.auth-tab {
+  flex: 1; padding: 11px; font-family: 'DM Mono', monospace; font-size: 11px;
+  letter-spacing: 1px; text-transform: uppercase; background: var(--surface2);
+  border: none; color: var(--text-dim); cursor: pointer; transition: all .15s; min-height: 0;
+}
+.auth-tab.active { background: var(--gold); color: #0f0e0b; font-weight: 500; }
+[data-theme="light"] .auth-tab.active { color: #fff; }
 
-  .player-inputs { display: flex; flex-direction: column; gap: 10px; }
-  .player-input-row { display: flex; gap: 10px; align-items: center; }
-  .player-input-row .suit-badge { font-size: 18px; width: 28px; text-align: center; color: var(--text-dim); flex-shrink: 0; }
+/* ── Game list ── */
+.game-list { display: flex; flex-direction: column; gap: 8px; }
+.game-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 13px 15px; display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; transition: border-color .15s, background .15s; gap: 10px;
+}
+.game-item:hover  { border-color: var(--gold-dim); background: var(--surface2); }
+.game-item:active { background: var(--surface2); }
+.game-item-name { font-family: 'Playfair Display', serif; font-size: 16px; }
+.game-item-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+.game-item-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.game-item-badge {
+  font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px;
+  border-radius: 20px; background: rgba(201,168,76,.1); color: var(--gold);
+  border: 1px solid var(--gold-dim); white-space: nowrap;
+}
+.game-item-delete {
+  background: none; border: none; color: var(--text-mute); font-size: 15px;
+  padding: 5px 7px; letter-spacing: 0; text-transform: none; border-radius: 4px;
+  line-height: 1; transition: color .15s, background .15s; min-height: 0;
+  position: relative;
+}
+.game-item-delete::after { content: ''; position: absolute; inset: -6px; }
+.game-item-delete:hover { color: var(--red-lt); background: rgba(192,57,43,.1); }
 
-  /* ── Player roster ── */
-  .player-roster { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-  .player-chip {
-    display: flex; align-items: center; gap: 6px;
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 20px; padding: 7px 12px;
-    font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text);
-    transition: all .15s;
-  }
-  .player-chip.inactive { opacity: .4; border-style: dashed; }
-  .player-chip .chip-name { font-family: 'Lora', serif; font-size: 13px; }
-  .player-chip .chip-toggle {
-    background: none; border: none; font-size: 14px; padding: 0 2px;
-    color: var(--text-dim); cursor: pointer; letter-spacing: 0; text-transform: none;
-    transition: color .12s; min-height: 0;
-  }
-  .add-player-row { display: flex; gap: 8px; margin-top: 10px; }
-  .add-player-row input { flex: 1; }
+/* ── Delete dialog — bottom sheet ── */
+.dialog-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.65);
+  display: none; align-items: flex-end; justify-content: center; z-index: 200;
+}
+.dialog-overlay.visible { display: flex; }
+.dialog-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px 12px 0 0;
+  padding: 22px 16px calc(20px + env(safe-area-inset-bottom));
+  width: 100%; max-width: 500px; box-shadow: var(--shadow);
+  animation: slideUp .2s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
+.dialog-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--gold-lt); margin-bottom: 8px; }
+.dialog-msg { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; line-height: 1.5; }
+.dialog-actions { display: flex; gap: 10px; }
+.dialog-actions > * { flex: 1; }
 
-  /* ── Hand entry — mobile-first card layout ── */
-  .hand-entries { display: flex; flex-direction: column; gap: 10px; }
+/* ── Player count ── */
+.player-count-row { display: flex; gap: 8px; }
+.count-btn {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text-dim); padding: 12px 8px;
+  font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
+  border-radius: 8px; transition: all .15s;
+}
+.count-btn:hover    { border-color: var(--gold-dim); color: var(--gold); }
+.count-btn.selected { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,.1); }
+.player-inputs { display: flex; flex-direction: column; gap: 10px; }
+.player-input-row { display: flex; gap: 10px; align-items: center; }
+.player-input-row .suit-badge { font-size: 18px; width: 28px; text-align: center; color: var(--text-dim); flex-shrink: 0; }
 
-  .entry-card {
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 12px 14px;
-    transition: border-color .15s;
-  }
-  .entry-card.winner-card { border-color: var(--gold-dim); background: rgba(201,168,76,.04); }
+/* ── Player roster chips ── */
+.player-roster { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.player-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 7px 12px; transition: all .15s;
+}
+.player-chip.inactive { opacity: .4; border-style: dashed; }
+.player-chip .chip-name { font-family: 'Lora', serif; font-size: 13px; }
+.player-chip .chip-toggle {
+  background: none; border: none; font-size: 14px; padding: 0 2px;
+  color: var(--text-dim); cursor: pointer; letter-spacing: 0; text-transform: none;
+  transition: color .12s; min-height: 0;
+}
+.add-player-row { display: flex; gap: 8px; margin-top: 10px; }
+.add-player-row input { flex: 1; }
 
-  .entry-card-top {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 10px; gap: 8px;
-  }
-  .entry-player-name {
-    font-family: 'Playfair Display', serif; font-size: 16px; flex: 1;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .entry-player-suit { color: var(--text-dim); font-size: 14px; }
+/* ── Hand entry cards ── */
+.hand-entries { display: flex; flex-direction: column; gap: 10px; }
+.entry-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 13px; transition: border-color .15s;
+}
+.entry-card.winner-card { border-color: var(--gold-dim); background: rgba(201,168,76,.04); }
+[data-theme="light"] .entry-card.winner-card { background: rgba(201,168,76,.07); }
+.entry-card-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px; gap: 8px;
+}
+.entry-player-name {
+  font-family: 'Playfair Display', serif; font-size: 16px; flex: 1;
+  display: flex; align-items: center; gap: 6px;
+}
+.entry-player-suit { color: var(--text-dim); font-size: 14px; }
+.winner-toggle input[type="radio"] { display: none; }
+.winner-toggle-label {
+  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px;
+  text-transform: uppercase; padding: 6px 11px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-mute); transition: all .15s; cursor: pointer;
+  display: flex; align-items: center; gap: 5px; white-space: nowrap;
+}
+.winner-toggle input:checked + .winner-toggle-label {
+  border-color: var(--gold); background: rgba(201,168,76,.15); color: var(--gold-lt);
+}
+.entry-card-bottom { display: flex; align-items: center; gap: 8px; }
+.status-group { display: flex; gap: 4px; flex: 1; }
+.status-btn {
+  flex: 1; padding: 7px 4px; font-family: 'DM Mono', monospace; font-size: 10px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-dim); border-radius: 4px; transition: all .12s; min-height: 0;
+}
+.status-btn:active { transform: scale(.97); }
+.status-btn.active-seen   { background: rgba(39,174,96,.15);  border-color: var(--green);    color: var(--green-lt); }
+.status-btn.active-unseen { background: rgba(192,57,43,.15);  border-color: var(--red);      color: var(--red-lt); }
+.status-btn.active-duplee { background: rgba(201,168,76,.12); border-color: var(--gold-dim); color: var(--gold); }
+.status-btn.status-disabled { opacity: .25; cursor: not-allowed; }
+.maal-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.maal-label { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); white-space: nowrap; }
+.maal-input { width: 70px !important; text-align: right; font-family: 'DM Mono', monospace; font-size: 16px; padding: 7px 9px !important; }
 
-  /* winner radio styled as a toggle chip */
-  .winner-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; }
-  .winner-toggle input[type="radio"] { display: none; }
-  .winner-toggle-label {
-    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px;
-    text-transform: uppercase; padding: 5px 10px; border-radius: 20px;
-    border: 1px solid var(--border); background: var(--surface);
-    color: var(--text-mute); transition: all .15s; cursor: pointer;
-    display: flex; align-items: center; gap: 5px; white-space: nowrap;
-  }
-  .winner-toggle input:checked + .winner-toggle-label {
-    border-color: var(--gold); background: rgba(201,168,76,.15); color: var(--gold-lt);
-  }
+/* ── Better Game toggle ── */
+.better-game-toggle {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 13px 15px; margin-bottom: 14px;
+  cursor: pointer; transition: all .15s; user-select: none;
+}
+.better-game-toggle.active { border-color: var(--gold); background: rgba(201,168,76,.07); }
+.bg-checkbox {
+  width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0; transition: all .15s;
+}
+.better-game-toggle.active .bg-checkbox { border-color: var(--gold); background: var(--gold); color: #0f0e0b; }
+.bg-label { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+.better-game-toggle.active .bg-label { color: var(--gold-lt); }
+.bg-desc { font-size: 11px; color: var(--text-mute); margin-top: 2px; font-family: 'DM Mono', monospace; }
 
-  .entry-card-bottom {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  }
-  .status-group { display: flex; gap: 4px; flex: 1; }
-  .status-btn {
-    flex: 1; padding: 7px 4px; font-family: 'DM Mono', monospace; font-size: 10px;
-    letter-spacing: 0.3px; border: 1px solid var(--border); background: var(--surface);
-    color: var(--text-dim); border-radius: 4px; transition: all .12s; min-height: 0;
-    text-align: center;
-  }
-  .status-btn:active { transform: scale(.97); }
-  .status-btn.active-seen   { background: rgba(39,174,96,.15);  border-color: var(--green);    color: var(--green-lt); }
-  .status-btn.active-unseen { background: rgba(192,57,43,.15);  border-color: var(--red);      color: var(--red-lt); }
-  .status-btn.active-duplee { background: rgba(201,168,76,.12); border-color: var(--gold-dim); color: var(--gold); }
-  .status-btn.status-disabled { opacity: .25; cursor: not-allowed; }
+/* ── Scoreboard ── */
+.scoreboard-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.score-table { width: 100%; border-collapse: collapse; min-width: 0; }
+.score-table th {
+  font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-dim); padding: 8px 9px;
+  text-align: center; border-bottom: 2px solid var(--border); white-space: nowrap;
+}
+.score-table th.player-th { font-family: 'Playfair Display', serif; font-size: 12px; text-transform: none; letter-spacing: 0; color: var(--gold-lt); }
+.score-table th.player-th.inactive-th { color: var(--text-mute); font-style: italic; }
+.score-table td { padding: 8px 9px; text-align: center; border-bottom: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: 13px; }
+.score-table .hand-label { font-family: 'Lora', serif; font-size: 12px; color: var(--text-dim); text-align: left; white-space: nowrap; }
+.score-table tfoot td { border-top: 2px solid var(--border); border-bottom: none; font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; padding: 10px 9px; }
+.pts-pos { color: var(--green-lt); } .pts-neg { color: var(--red-lt); } .pts-zero { color: var(--text-dim); }
+.total-best { color: var(--gold) !important; }
+.winner-icon { font-size: 11px; }
+.better-badge { font-family: 'DM Mono', monospace; font-size: 9px; background: rgba(201,168,76,.15); border: 1px solid var(--gold-dim); color: var(--gold); border-radius: 3px; padding: 1px 4px; margin-left: 3px; vertical-align: middle; }
+.hand-expand-row { background: var(--surface2); display: none; }
+.hand-expand-row.open { display: table-row; }
+.hand-expand-row td { padding: 10px 12px !important; }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover td { background: rgba(201,168,76,.03); }
+.hand-detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+.hand-detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; font-family: 'DM Mono', monospace; font-size: 11px; }
+.hand-detail-card .hd-name { color: var(--gold-lt); font-size: 12px; margin-bottom: 4px; font-family: 'Playfair Display', serif; }
+.hand-detail-card .hd-row { display: flex; justify-content: space-between; color: var(--text-dim); margin-top: 2px; }
+.hand-detail-card .hd-row span:last-child { color: var(--text); }
 
-  .maal-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-  .maal-label { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); white-space: nowrap; }
-  .maal-input {
-    width: 72px !important; text-align: right; font-family: 'DM Mono', monospace;
-    font-size: 16px; padding: 7px 10px !important;
-  }
+/* ── Misc ── */
+.section-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.section-actions > * { flex: 1; min-width: 120px; }
+.error-msg { background: rgba(192,57,43,.1); border: 1px solid rgba(192,57,43,.35); border-radius: 8px; color: var(--red-lt); padding: 11px 14px; font-family: 'DM Mono', monospace; font-size: 12px; margin-top: 10px; display: none; }
+.error-msg.visible { display: block; }
+.success-msg { background: rgba(39,174,96,.08); border: 1px solid rgba(39,174,96,.3); border-radius: 8px; color: var(--green-lt); padding: 11px 14px; font-family: 'DM Mono', monospace; font-size: 12px; margin-top: 10px; display: none; }
+.success-msg.visible { display: block; }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-dim); font-style: italic; }
+.empty-state .big-suit { font-size: 36px; opacity: .2; display: block; margin-bottom: 10px; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 100; }
+.loading-overlay.visible { display: flex; }
+.loading-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 32px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text-dim); display: flex; align-items: center; gap: 10px; }
 
-  /* ── Better Game toggle ── */
-  .better-game-toggle {
-    display: flex; align-items: center; gap: 14px;
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px;
-    cursor: pointer; transition: border-color .15s; user-select: none;
-  }
-  .better-game-toggle:hover  { border-color: var(--gold-dim); }
-  .better-game-toggle:active { background: rgba(201,168,76,.05); }
-  .better-game-toggle.active { border-color: var(--gold); background: rgba(201,168,76,.08); }
-  .bg-checkbox {
-    width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 5px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; flex-shrink: 0; transition: all .15s;
-  }
-  .better-game-toggle.active .bg-checkbox { border-color: var(--gold); background: var(--gold); color: #0f0e0b; }
-  .bg-text { flex: 1; }
-  .bg-label { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
-  .better-game-toggle.active .bg-label { color: var(--gold-lt); }
-  .bg-desc { font-size: 11px; color: var(--text-mute); margin-top: 2px; font-family: 'DM Mono', monospace; }
-  .better-game-toggle.active .bg-desc { color: var(--gold-dim); }
+@media (min-width: 600px) {
+  #app { padding: 20px 24px 80px; }
+  header { padding: 24px 0 20px; margin-bottom: 24px; }
+  .hand-detail-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .section-actions > * { flex: 0 1 auto; min-width: 0; }
+}
 
-  /* ── Scoreboard ── */
-  .scoreboard-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .score-table { width: 100%; border-collapse: collapse; min-width: 0; }
-  .score-table th {
-    font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase;
-    letter-spacing: 1px; color: var(--text-dim); padding: 8px 10px;
-    text-align: center; border-bottom: 2px solid var(--border); white-space: nowrap;
-  }
-  .score-table th.player-th {
-    font-family: 'Playfair Display', serif; font-size: 12px; text-transform: none; letter-spacing: 0; color: var(--gold-lt);
-  }
-  .score-table th.player-th.inactive-th { color: var(--text-mute); font-style: italic; }
-  .score-table td {
-    padding: 8px 10px; text-align: center;
-    border-bottom: 1px solid rgba(58,52,40,.5);
-    font-family: 'DM Mono', monospace; font-size: 13px;
-  }
-  .score-table .hand-label {
-    font-family: 'Lora', serif; font-size: 12px; color: var(--text-dim);
-    text-align: left; white-space: nowrap;
-  }
-  .score-table tfoot td {
-    border-top: 2px solid var(--border); border-bottom: none;
-    font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; padding: 10px;
-  }
-  .pts-pos { color: var(--green-lt); }
-  .pts-neg { color: var(--red-lt); }
-  .pts-zero { color: var(--text-dim); }
-  .total-best { color: var(--gold-lt) !important; }
-  .winner-icon { font-size: 12px; }
-  .better-badge {
-    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .5px;
-    background: rgba(201,168,76,.15); border: 1px solid var(--gold-dim); color: var(--gold);
-    border-radius: 3px; padding: 1px 4px; margin-left: 4px; vertical-align: middle;
-  }
+/* ── Shared game badge on game list ── */
+.shared-badge {
+  font-family: 'DM Mono', monospace; font-size: 9px; padding: 2px 7px;
+  border-radius: 20px; background: rgba(39,174,96,.1); color: var(--green-lt);
+  border: 1px solid rgba(39,174,96,.3); white-space: nowrap; letter-spacing: .5px;
+  text-transform: uppercase;
+}
 
-  /* expandable hand rows */
-  .hand-expand-row { background: var(--surface2); display: none; }
-  .hand-expand-row.open { display: table-row; }
-  .hand-expand-row td { padding: 10px 14px !important; }
-  .clickable-row { cursor: pointer; }
-  .clickable-row:hover td { background: rgba(201,168,76,.03); }
+/* ── Join code display box ── */
+.join-code-box {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 16px; margin-bottom: 12px;
+}
+.join-code-label { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 8px; }
+.join-code-value {
+  font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500;
+  color: var(--gold-lt); letter-spacing: 6px; margin-bottom: 10px;
+}
+.join-code-desc { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); margin-bottom: 12px; line-height: 1.5; }
+.members-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.member-item { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+.member-item::before { content: '◈'; color: var(--gold-dim); font-size: 10px; }
 
-  /* hand detail cards */
-  .hand-detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
-  .hand-detail-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 9px 12px;
-    font-family: 'DM Mono', monospace; font-size: 11px;
-  }
-  .hand-detail-card .hd-name { color: var(--gold-lt); font-size: 12px; margin-bottom: 4px; font-family: 'Playfair Display', serif; }
-  .hand-detail-card .hd-row { display: flex; justify-content: space-between; color: var(--text-dim); margin-top: 2px; }
-  .hand-detail-card .hd-row span:last-child { color: var(--text); }
+/* ── Join input row ── */
+.join-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.join-row input { flex: 1; font-family: 'DM Mono', monospace !important; letter-spacing: 4px; text-transform: uppercase; font-size: 18px !important; }
 
-  /* ── Misc ── */
-  .section-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
-  .section-actions > * { flex: 1; min-width: 120px; }
-
-  .error-msg {
-    background: rgba(192,57,43,.12); border: 1px solid rgba(192,57,43,.4);
-    border-radius: var(--radius); color: var(--red-lt); padding: 11px 14px;
-    font-family: 'DM Mono', monospace; font-size: 12px; margin-top: 10px; display: none;
-  }
-  .error-msg.visible { display: block; }
-  .success-msg {
-    background: rgba(39,174,96,.1); border: 1px solid rgba(39,174,96,.3);
-    border-radius: var(--radius); color: var(--green-lt); padding: 11px 14px;
-    font-family: 'DM Mono', monospace; font-size: 12px; margin-top: 10px; display: none;
-  }
-  .success-msg.visible { display: block; }
-
-  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-dim); font-style: italic; }
-  .empty-state .big-suit { font-size: 36px; opacity: .2; display: block; margin-bottom: 10px; }
-
-  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-overlay { position: fixed; inset: 0; background: rgba(15,14,11,.6); display: none; align-items: center; justify-content: center; z-index: 100; }
-  .loading-overlay.visible { display: flex; }
-  .loading-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 36px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text-dim); display: flex; align-items: center; gap: 10px; }
-
-  /* ── Desktop enhancements (≥ 600px) ── */
-  @media (min-width: 600px) {
-    :root { --pad: 24px; --card-pad: 24px; }
-    header { padding: 36px 0 28px; margin-bottom: 28px; }
-
-    /* restore suit decorations on wider screens */
-    header::before, header::after { font-size: 13px; letter-spacing: 6px; }
-
-    .entry-card-bottom { flex-wrap: nowrap; }
-
-    .score-table th { font-size: 10px; padding: 10px 12px; }
-    .score-table td  { padding: 9px 12px; font-size: 13px; }
-    .hand-detail-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
-    .section-actions > * { flex: 0 1 auto; min-width: 0; }
-  }
-
-  /* ── Narrow screens: hide suit decorations ── */
-  @media (max-width: 400px) {
-    header::before, header::after { display: none; }
-    .maal-input { width: 60px !important; }
-  }
 </style>
 </head>
 <body>
@@ -428,15 +448,48 @@
 
 <div id="app">
   <header>
-    <div class="logo">Marriage</div>
-    <div class="logo-sub">Points Calculator</div>
+    <div style="width:80px;flex-shrink:0"></div><!-- spacer -->
+    <div class="header-logo">
+      <div class="logo">Marriage</div>
+      <div class="logo-sub">Points Calculator</div>
+    </div>
+    <div class="header-actions">
+      <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Toggle theme">☀️</button>
+      <div id="user-badge-wrap"></div>
+    </div>
   </header>
 
+  <!-- AUTH SCREEN -->
+  <div id="screen-auth" class="screen active">
+    <div class="card" style="max-width:420px;margin:0 auto">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Sign In</button>
+        <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">New User</button>
+      </div>
+      <div id="auth-login-form">
+        <div class="field"><label>Your Name</label><input type="text" id="login-name" placeholder="e.g. Ramesh" autocomplete="username"></div>
+        <div class="field"><label>4-Digit PIN</label><input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="pin-input" id="login-pin" placeholder="••••" autocomplete="current-password"></div>
+        <div id="login-error" class="error-msg"></div>
+        <button class="btn-primary btn-full" onclick="doLogin()" style="margin-top:4px">Sign In</button>
+      </div>
+      <div id="auth-register-form" style="display:none">
+        <div class="field"><label>Choose a Name</label><input type="text" id="reg-name" placeholder="e.g. Ramesh" autocomplete="username"></div>
+        <div class="field"><label>Choose a 4-Digit PIN</label><input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="pin-input" id="reg-pin" placeholder="••••" autocomplete="new-password"></div>
+        <div class="field"><label>Confirm PIN</label><input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="pin-input" id="reg-pin2" placeholder="••••" autocomplete="new-password"></div>
+        <div id="reg-error" class="error-msg"></div>
+        <button class="btn-primary btn-full" onclick="doRegister()" style="margin-top:4px">Create Account</button>
+      </div>
+    </div>
+  </div>
+
   <!-- HOME -->
-  <div id="screen-home" class="screen active">
+  <div id="screen-home" class="screen">
     <div class="card-header">
-      <h2 style="margin:0"><span class="suit">♠</span> Saved Games</h2>
-      <button class="btn-primary btn-sm" onclick="showScreen('screen-new-game')">+ New Game</button>
+      <h2 style="margin:0"><span class="suit">♠</span> My Games</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary btn-sm" onclick="showJoinDialog()">Join</button>
+        <button class="btn-primary btn-sm" onclick="showScreen('screen-new-game')">+ New</button>
+      </div>
     </div>
     <div id="game-list" class="game-list"></div>
   </div>
@@ -446,10 +499,7 @@
     <div class="breadcrumb"><a onclick="showScreen('screen-home')">Home</a> › New Game</div>
     <h2><span class="suit">♣</span> New Game</h2>
     <div class="card">
-      <div class="field">
-        <label>Game Name</label>
-        <input type="text" id="new-game-name" placeholder="e.g. Friday Night, Dashain 2081…" autocomplete="off">
-      </div>
+      <div class="field"><label>Game Name</label><input type="text" id="new-game-name" placeholder="e.g. Friday Night, Dashain 2081…" autocomplete="off"></div>
       <div class="field">
         <label>Number of Players</label>
         <div class="player-count-row">
@@ -476,14 +526,15 @@
     <div class="breadcrumb"><a onclick="showScreen('screen-home')">Home</a> › <span id="game-breadcrumb">Game</span></div>
     <div class="card-header">
       <h2 style="margin:0"><span class="suit">♥</span> <span id="game-title-text">Game</span></h2>
-      <button class="btn-primary btn-sm" onclick="showAddHand()">+ Hand</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary btn-sm" id="share-btn" onclick="showShareDialog()">Share</button>
+        <button class="btn-primary btn-sm" id="add-hand-btn" onclick="showAddHand()">+ Hand</button>
+      </div>
     </div>
-
-    <!-- Players -->
     <div class="card" style="margin-bottom:12px">
       <div class="card-header">
         <h3 style="margin:0">Players</h3>
-        <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-mute);text-transform:uppercase;letter-spacing:1px">tap to toggle</span>
+        <span id="player-toggle-hint" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text-mute);text-transform:uppercase;letter-spacing:1px">tap to toggle</span>
       </div>
       <div id="player-roster" class="player-roster"></div>
       <div id="add-player-section">
@@ -494,8 +545,6 @@
         <div id="add-player-error" class="error-msg" style="margin-top:8px"></div>
       </div>
     </div>
-
-    <!-- Scoreboard -->
     <div class="card">
       <h3>Scoreboard</h3>
       <div class="scoreboard-wrap">
@@ -506,47 +555,74 @@
         </table>
       </div>
       <div id="scoreboard-empty" class="empty-state" style="display:none">
-        <span class="big-suit">♦</span>
-        No hands yet — add the first one!
+        <span class="big-suit">♦</span>No hands yet — add the first one!
       </div>
     </div>
   </div>
 
-  <!-- ADD HAND SCREEN -->
+  <!-- ADD HAND -->
   <div id="screen-add-hand" class="screen">
     <div class="breadcrumb">
       <a onclick="showScreen('screen-home')">Home</a> ›
-      <a id="hand-game-breadcrumb" onclick="goToCurrentGame()">Game</a> ›
-      Add Hand
+      <a id="hand-game-breadcrumb" onclick="goToCurrentGame()">Game</a> › Add Hand
     </div>
     <h2><span class="suit">♦</span> Add Hand</h2>
-
     <div class="card">
-      <!-- Better Game toggle -->
       <div id="better-game-toggle" class="better-game-toggle" onclick="toggleBetterGame()">
         <div class="bg-checkbox" id="bg-checkbox"></div>
-        <div class="bg-text">
+        <div>
           <div class="bg-label">Better Game</div>
           <div class="bg-desc">All points doubled for this hand</div>
         </div>
       </div>
-
-      <!-- Per-player entry cards -->
       <div class="hand-entries" id="hand-entries"></div>
-
       <div id="add-hand-error" class="error-msg"></div>
       <div id="add-hand-success" class="success-msg"></div>
-
       <div class="section-actions">
         <button class="btn-primary" onclick="finalizeHand()">Finalize Hand</button>
         <button class="btn-ghost" onclick="goToCurrentGame()">Cancel</button>
       </div>
     </div>
   </div>
-
 </div>
 
-<!-- Delete confirmation — slides up from bottom -->
+<!-- Join dialog -->
+<div id="join-dialog-overlay" class="dialog-overlay">
+  <div class="dialog-box">
+    <div class="dialog-title">Join a Game</div>
+    <div class="dialog-msg">Enter the 5-character code shared by the game owner.</div>
+    <div class="join-row">
+      <input type="text" id="join-code-input" placeholder="e.g. KBM4X" maxlength="5" autocomplete="off" autocapitalize="characters">
+      <button class="btn-primary btn-sm" onclick="doJoinGame()">Join</button>
+    </div>
+    <div id="join-error" class="error-msg"></div>
+    <div style="margin-top:12px">
+      <button class="btn-ghost btn-full" onclick="closeJoinDialog()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Share dialog -->
+<div id="share-dialog-overlay" class="dialog-overlay">
+  <div class="dialog-box">
+    <div class="dialog-title">Share Game</div>
+    <div class="join-code-box">
+      <div class="join-code-label">Join Code</div>
+      <div class="join-code-value" id="share-code-display">—</div>
+      <div class="join-code-desc">Share this code with friends so they can join and add hands to this game.</div>
+      <button class="btn-secondary btn-sm" onclick="copyJoinCode()">Copy Code</button>
+    </div>
+    <div id="share-members-section" style="display:none">
+      <div class="join-code-label" style="margin-bottom:6px">Also in this game</div>
+      <div class="members-list" id="share-members-list"></div>
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn-ghost btn-full" onclick="closeShareDialog()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirmation -->
 <div id="dialog-overlay" class="dialog-overlay">
   <div class="dialog-box">
     <div class="dialog-title">Delete Game?</div>
@@ -559,157 +635,208 @@
 </div>
 
 <script>
+// ── Config ────────────────────────────────────────────────────────────────────
 const API = 'https://marriagecalculator-production.up.railway.app/api';
-let currentGame  = null;
-let handEntries  = [];
-let isBetterGame = false;
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentGame      = null;
+let handEntries      = [];
+let isBetterGame     = false;
 let _pendingDeleteId = null;
+let currentUser      = null;   // { id, name }
 
 const SUITS = ['♠','♥','♦','♣','♠','♥'];
 
-// ── Utilities ────────────────────────────────────────────────────────────────
+// ── Theme ─────────────────────────────────────────────────────────────────────
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('mc-theme', theme);
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+// Apply saved theme immediately
+applyTheme(localStorage.getItem('mc-theme') || 'dark');
 
+// ── Utilities ─────────────────────────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
   if (id === 'screen-home') loadGameList();
 }
-
-function loading(on) {
-  document.getElementById('loading-overlay').classList.toggle('visible', on);
-}
-
+function loading(on) { document.getElementById('loading-overlay').classList.toggle('visible', on); }
 function showError(elId, msg) {
   const el = document.getElementById(elId);
   el.textContent = msg; el.classList.add('visible');
   setTimeout(() => el.classList.remove('visible'), 6000);
 }
-
 function showSuccess(elId, msg) {
   const el = document.getElementById(elId);
   el.textContent = msg; el.classList.add('visible');
 }
-
 async function apiFetch(url, opts = {}) {
-  const res = await fetch(API + url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const res = await fetch(API + url, {
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...opts,
+  });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'API error');
   return data;
 }
-
 function fmtDate(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
-
 function ptsClass(n) { return n > 0 ? 'pts-pos' : n < 0 ? 'pts-neg' : 'pts-zero'; }
-
 function esc(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Home / Game List ─────────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function renderUserBadge() {
+  const wrap = document.getElementById('user-badge-wrap');
+  if (!currentUser) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = `
+    <div class="user-badge">
+      <span class="user-name">${esc(currentUser.name)}</span>
+      <button class="logout-btn" onclick="doLogout()" title="Sign out">✕</button>
+    </div>`;
+}
 
+function switchAuthTab(tab) {
+  document.getElementById('auth-login-form').style.display    = tab === 'login'    ? '' : 'none';
+  document.getElementById('auth-register-form').style.display = tab === 'register' ? '' : 'none';
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+}
+
+async function doLogin() {
+  const name = document.getElementById('login-name').value.trim();
+  const pin  = document.getElementById('login-pin').value.trim();
+  loading(true);
+  try {
+    currentUser = await apiFetch('/auth/login', { method:'POST', body: JSON.stringify({ name, pin }) });
+    renderUserBadge();
+    showScreen('screen-home');
+  } catch(e) { showError('login-error', e.message); }
+  finally { loading(false); }
+}
+
+async function doRegister() {
+  const name = document.getElementById('reg-name').value.trim();
+  const pin  = document.getElementById('reg-pin').value.trim();
+  const pin2 = document.getElementById('reg-pin2').value.trim();
+  if (pin !== pin2) { showError('reg-error', 'PINs do not match.'); return; }
+  loading(true);
+  try {
+    currentUser = await apiFetch('/auth/register', { method:'POST', body: JSON.stringify({ name, pin }) });
+    renderUserBadge();
+    showScreen('screen-home');
+  } catch(e) { showError('reg-error', e.message); }
+  finally { loading(false); }
+}
+
+async function doLogout() {
+  loading(true);
+  try {
+    await apiFetch('/auth/logout', { method: 'POST' });
+  } catch(_) {}
+  finally {
+    currentUser = null;
+    renderUserBadge();
+    loading(false);
+    showScreen('screen-auth');
+  }
+}
+
+// ── Home / Game List ──────────────────────────────────────────────────────────
 async function loadGameList() {
   loading(true);
   try {
     const games = await apiFetch('/games');
     const list = document.getElementById('game-list');
     if (!games.length) {
-      list.innerHTML = '<div class="empty-state"><span class="big-suit">♠</span>No saved games yet. Start a new one!</div>';
+      list.innerHTML = '<div class="empty-state"><span class="big-suit">♠</span>No games yet. Start one or join a friend\'s!</div>';
       return;
     }
-    list.innerHTML = games.map(g => `
-      <div class="game-item" onclick="openGame(${g.id})">
-        <div>
-          <div class="game-item-name">${esc(g.name)}</div>
-          <div class="game-item-meta">${fmtDate(g.created_at)} · ${g.hand_count} hand${g.hand_count !== 1 ? 's' : ''}</div>
-        </div>
-        <div class="game-item-right">
-          <span class="game-item-badge">${g.hand_count} hand${g.hand_count !== 1 ? 's' : ''}</span>
-          <button class="game-item-delete" title="Delete game"
-            onclick="event.stopPropagation(); promptDelete(${g.id}, '${esc(g.name)}')">🗑</button>
-        </div>
-      </div>`).join('');
-  } catch(e) { alert('Could not load games: ' + e.message); }
-  finally { loading(false); }
+    list.innerHTML = games.map(g => {
+      const sharedBadge = g.is_owner ? '' : `<span class="shared-badge">joined</span>`;
+      const deleteBtn   = g.is_owner
+        ? `<button class="game-item-delete" title="Delete" onclick="event.stopPropagation(); promptDelete(${g.id}, '${esc(g.name)}')">🗑</button>`
+        : '';
+      return `
+        <div class="game-item" onclick="openGame(${g.id})">
+          <div>
+            <div class="game-item-name">${esc(g.name)}</div>
+            <div class="game-item-meta">${fmtDate(g.created_at)} · ${g.hand_count} hand${g.hand_count !== 1 ? 's' : ''}</div>
+          </div>
+          <div class="game-item-right">
+            ${sharedBadge}
+            <span class="game-item-badge">${g.hand_count} hand${g.hand_count !== 1 ? 's' : ''}</span>
+            ${deleteBtn}
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    if (e.message.includes('logged in')) { showScreen('screen-auth'); return; }
+    alert('Could not load games: ' + e.message);
+  } finally { loading(false); }
 }
 
-// ── Delete dialog ────────────────────────────────────────────────────────────
-
-function promptDelete(gameId, gameName) {
-  _pendingDeleteId = gameId;
-  document.getElementById('dialog-msg').textContent =
-    `"${gameName}" and all its hands will be permanently deleted. This cannot be undone.`;
+// ── Delete ────────────────────────────────────────────────────────────────────
+function promptDelete(id, name) {
+  _pendingDeleteId = id;
+  document.getElementById('dialog-msg').textContent = `"${name}" and all its hands will be permanently deleted. This cannot be undone.`;
   document.getElementById('dialog-overlay').classList.add('visible');
 }
-
-function closeDialog() {
-  _pendingDeleteId = null;
-  document.getElementById('dialog-overlay').classList.remove('visible');
-}
-
+function closeDialog() { _pendingDeleteId = null; document.getElementById('dialog-overlay').classList.remove('visible'); }
 async function confirmDelete() {
   if (!_pendingDeleteId) return;
-  const id = _pendingDeleteId;
-  closeDialog();
+  const id = _pendingDeleteId; closeDialog();
   loading(true);
-  try {
-    await apiFetch(`/games/${id}`, { method: 'DELETE' });
-    await loadGameList();
-  } catch(e) { alert('Could not delete game: ' + e.message); }
+  try { await apiFetch(`/games/${id}`, { method: 'DELETE' }); await loadGameList(); }
+  catch(e) { alert('Could not delete: ' + e.message); }
   finally { loading(false); }
 }
+document.getElementById('dialog-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeDialog(); });
 
-document.getElementById('dialog-overlay').addEventListener('click', function(e) {
-  if (e.target === this) closeDialog();
-});
-
-// ── New Game ─────────────────────────────────────────────────────────────────
-
+// ── New Game ──────────────────────────────────────────────────────────────────
 let selectedPlayerCount = 0;
-
 function setPlayerCount(n) {
   selectedPlayerCount = n;
-  document.querySelectorAll('.count-btn').forEach(b =>
-    b.classList.toggle('selected', parseInt(b.dataset.n) === n));
+  document.querySelectorAll('.count-btn').forEach(b => b.classList.toggle('selected', parseInt(b.dataset.n) === n));
   const section = document.getElementById('player-names-section');
-  const inputs  = document.getElementById('player-inputs');
   section.style.display = 'block';
-  inputs.innerHTML = Array.from({length: n}, (_, i) => `
+  document.getElementById('player-inputs').innerHTML = Array.from({length: n}, (_, i) => `
     <div class="player-input-row">
       <span class="suit-badge">${SUITS[i]}</span>
       <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off">
     </div>`).join('');
   document.getElementById('pname-0').focus();
 }
-
 async function createGame() {
   const name = document.getElementById('new-game-name').value.trim();
-  if (!name)              { showError('new-game-error', 'Please enter a game name.'); return; }
+  if (!name) { showError('new-game-error', 'Please enter a game name.'); return; }
   if (!selectedPlayerCount) { showError('new-game-error', 'Please select the number of players.'); return; }
-
   const players = [];
   for (let i = 0; i < selectedPlayerCount; i++) {
     const v = (document.getElementById(`pname-${i}`)?.value || '').trim();
     if (!v) { showError('new-game-error', `Please enter a name for Player ${i+1}.`); return; }
     players.push(v);
   }
-
   loading(true);
   try {
-    const game = await apiFetch('/games', { method: 'POST', body: JSON.stringify({ name, players }) });
-    currentGame = game;
-    openGame(game.id);
+    const game = await apiFetch('/games', { method:'POST', body: JSON.stringify({ name, players }) });
+    currentGame = game; openGame(game.id);
   } catch(e) { showError('new-game-error', e.message); }
   finally { loading(false); }
 }
 
 // ── Game Screen ───────────────────────────────────────────────────────────────
-
 async function openGame(gameId) {
   loading(true);
   try {
@@ -718,279 +845,280 @@ async function openGame(gameId) {
       apiFetch(`/games/${gameId}/scoreboard`),
     ]);
     currentGame = game;
-    renderGameScreen(game, board);
+    const isOwner = !!game.is_owner;
+
+    document.getElementById('game-title-text').textContent     = game.name;
+    document.getElementById('game-breadcrumb').textContent      = game.name;
+    document.getElementById('hand-game-breadcrumb').textContent = game.name;
+    document.getElementById('new-player-name').value = '';
+
+    // Show/hide owner-only controls
+    document.getElementById('add-hand-btn').style.display       = isOwner ? '' : 'none';
+    document.getElementById('player-toggle-hint').style.display = isOwner ? '' : 'none';
+    document.getElementById('add-player-section').style.display = isOwner && game.players.length < 6 ? 'block' : 'none';
+
+    renderPlayerRoster(game.players, isOwner);
+    renderScoreboard(game.players, board);
     showScreen('screen-game');
   } catch(e) { alert('Could not load game: ' + e.message); }
   finally { loading(false); }
 }
 
-function renderGameScreen(game, board) {
-  document.getElementById('game-title-text').textContent = game.name;
-  document.getElementById('game-breadcrumb').textContent = game.name;
-  document.getElementById('hand-game-breadcrumb').textContent = game.name;
-  document.getElementById('new-player-name').value = '';
-  renderPlayerRoster(game.players);
-  renderScoreboard(game.players, board);
-}
-
 // ── Players ───────────────────────────────────────────────────────────────────
-
-function renderPlayerRoster(players) {
-  const roster    = document.getElementById('player-roster');
-  const addSection = document.getElementById('add-player-section');
-  roster.innerHTML = players.map(p => `
-    <div class="player-chip ${p.is_active ? '' : 'inactive'}" id="chip-${p.id}">
+function renderPlayerRoster(players, isOwner) {
+  document.getElementById('player-roster').innerHTML = players.map(p => `
+    <div class="player-chip ${p.is_active ? '' : 'inactive'}">
       <span class="chip-name">${esc(p.name)}</span>
-      <button class="chip-toggle" onclick="togglePlayerActive(${p.id}, ${p.is_active})"
-        title="${p.is_active ? 'Deactivate' : 'Activate'}">
-        ${p.is_active ? '●' : '○'}
-      </button>
+      ${isOwner ? `<button class="chip-toggle" onclick="togglePlayerActive(${p.id}, ${p.is_active})"
+        title="${p.is_active ? 'Deactivate' : 'Activate'}">${p.is_active ? '●' : '○'}</button>` : ''}
     </div>`).join('');
-  addSection.style.display = players.length < 6 ? 'block' : 'none';
+  // add-player-section visibility is set in openGame based on isOwner
 }
-
-async function togglePlayerActive(playerId, currentlyActive) {
+async function togglePlayerActive(pid, currently) {
   loading(true);
   try {
-    const player = await apiFetch(`/players/${playerId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ is_active: !currentlyActive }),
-    });
-    const p = currentGame.players.find(p => p.id === playerId);
+    const player = await apiFetch(`/players/${pid}`, { method:'PATCH', body: JSON.stringify({ is_active: !currently }) });
+    const p = currentGame.players.find(p => p.id === pid);
     if (p) p.is_active = player.is_active;
     const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
-    renderGameScreen(currentGame, board);
+    renderPlayerRoster(currentGame.players, !!currentGame.is_owner);
+    renderScoreboard(currentGame.players, board);
   } catch(e) { showError('add-player-error', e.message); }
   finally { loading(false); }
 }
-
 async function addPlayer() {
   const name = document.getElementById('new-player-name').value.trim();
   if (!name) { showError('add-player-error', 'Enter a player name.'); return; }
   loading(true);
   try {
-    const player = await apiFetch(`/games/${currentGame.id}/players`, {
-      method: 'POST',
-      body: JSON.stringify({ name }),
-    });
-    player.is_active = true;
-    currentGame.players.push(player);
+    const player = await apiFetch(`/games/${currentGame.id}/players`, { method:'POST', body: JSON.stringify({ name }) });
+    player.is_active = true; currentGame.players.push(player);
     document.getElementById('new-player-name').value = '';
     const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
-    renderGameScreen(currentGame, board);
+    renderPlayerRoster(currentGame.players, !!currentGame.is_owner);
+    renderScoreboard(currentGame.players, board);
+    document.getElementById('add-player-section').style.display =
+      currentGame.is_owner && currentGame.players.length < 6 ? 'block' : 'none';
   } catch(e) { showError('add-player-error', e.message); }
   finally { loading(false); }
 }
 
 // ── Scoreboard ────────────────────────────────────────────────────────────────
-
 function renderScoreboard(players, board) {
-  const hands  = board.hands;
-  const totals = board.totals;
-  const thead  = document.getElementById('score-thead');
-  const tbody  = document.getElementById('score-tbody');
-  const tfoot  = document.getElementById('score-tfoot');
-  const empty  = document.getElementById('scoreboard-empty');
-  const table  = document.querySelector('.score-table');
+  const { hands, totals } = board;
+  const thead = document.getElementById('score-thead');
+  const tbody = document.getElementById('score-tbody');
+  const tfoot = document.getElementById('score-tfoot');
+  const empty = document.getElementById('scoreboard-empty');
+  const table = document.querySelector('.score-table');
 
-  thead.innerHTML = `<tr>
-    <th style="text-align:left">Hand</th>
-    ${players.map(p =>
-      `<th class="player-th ${p.is_active ? '' : 'inactive-th'}">${esc(p.name)}</th>`
-    ).join('')}
-  </tr>`;
+  thead.innerHTML = `<tr><th style="text-align:left">Hand</th>${players.map(p =>
+    `<th class="player-th ${p.is_active ? '' : 'inactive-th'}">${esc(p.name)}</th>`).join('')}</tr>`;
 
   if (!hands.length) {
     tbody.innerHTML = ''; tfoot.innerHTML = '';
-    empty.style.display = 'block'; table.style.display = 'none';
-    return;
+    empty.style.display = 'block'; table.style.display = 'none'; return;
   }
   empty.style.display = 'none'; table.style.display = '';
 
   tbody.innerHTML = hands.map(h => {
-    const byPlayer = {};
-    (h.entries || []).forEach(e => { byPlayer[e.player_id] = e; });
+    const byPlayer = {}; (h.entries||[]).forEach(e => { byPlayer[e.player_id] = e; });
     const rowId = `expand-${h.id}`;
-    const betterBadge = h.better_game ? `<span class="better-badge">2×</span>` : '';
+    const bb = h.better_game ? `<span class="better-badge">2×</span>` : '';
     const cells = players.map(p => {
-      const e = byPlayer[p.id];
-      if (!e) return `<td style="color:var(--text-mute)">—</td>`;
-      const pts = e.points;
+      const e = byPlayer[p.id]; if (!e) return `<td style="color:var(--text-mute)">—</td>`;
       const icon = e.is_winner ? ` <span class="winner-icon">👑</span>` : '';
-      return `<td class="${ptsClass(pts)}">${pts > 0 ? '+'+pts : pts}${icon}</td>`;
+      return `<td class="${ptsClass(e.points)}">${e.points > 0 ? '+'+e.points : e.points}${icon}</td>`;
     }).join('');
     return `
       <tr class="clickable-row" onclick="toggleHandDetail('${rowId}')">
-        <td class="hand-label">H${h.hand_number}${betterBadge} <span style="color:var(--text-mute);font-size:9px">▸</span></td>
-        ${cells}
+        <td class="hand-label">H${h.hand_number}${bb} <span style="color:var(--text-mute);font-size:9px">▸</span></td>${cells}
       </tr>
       <tr class="hand-expand-row" id="${rowId}">
-        <td colspan="${players.length + 1}">${renderHandDetail(h, players)}</td>
+        <td colspan="${players.length+1}">${renderHandDetail(h, players)}</td>
       </tr>`;
   }).join('');
 
-  const maxTotal = Math.max(...players.map(p => totals[p.id] ?? 0));
+  const maxT = Math.max(...players.map(p => totals[p.id] ?? 0));
   tfoot.innerHTML = `<tr>
     <td style="text-align:left;color:var(--text-dim);font-size:11px;font-family:'DM Mono',monospace">TOT</td>
     ${players.map(p => {
       const t = totals[p.id] ?? 0;
-      const cls = [ptsClass(t), t === maxTotal && t > 0 ? 'total-best' : ''].filter(Boolean).join(' ');
+      const cls = [ptsClass(t), t === maxT && t > 0 ? 'total-best' : ''].filter(Boolean).join(' ');
       return `<td class="${cls}">${t > 0 ? '+'+t : t}</td>`;
     }).join('')}
   </tr>`;
 }
 
 function renderHandDetail(hand, players) {
-  const byPlayer = {};
-  (hand.entries || []).forEach(e => { byPlayer[e.player_id] = e; });
-  const betterNote = hand.better_game
-    ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">★ Better Game — points doubled</div>`
-    : '';
+  const byPlayer = {}; (hand.entries||[]).forEach(e => { byPlayer[e.player_id] = e; });
+  const note = hand.better_game ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">★ Better Game — points doubled</div>` : '';
   const cards = players.map(p => {
     const e = byPlayer[p.id];
-    if (!e) return `<div class="hand-detail-card" style="opacity:.3">
-      <div class="hd-name">${esc(p.name)}</div>
-      <div class="hd-row"><span>Not in hand</span></div></div>`;
+    if (!e) return `<div class="hand-detail-card" style="opacity:.3"><div class="hd-name">${esc(p.name)}</div><div class="hd-row"><span>Not in hand</span></div></div>`;
     const pts = e.points;
-    return `
-      <div class="hand-detail-card">
-        <div class="hd-name">${esc(p.name)} ${e.is_winner ? '👑' : ''}</div>
-        <div class="hd-row"><span>Status</span><span>${e.status.charAt(0).toUpperCase()+e.status.slice(1)}</span></div>
-        <div class="hd-row"><span>Maal</span><span>${e.maal}</span></div>
-        <div class="hd-row"><span>Pts</span><span class="${ptsClass(pts)}">${pts > 0 ? '+'+pts : pts}</span></div>
-      </div>`;
+    return `<div class="hand-detail-card">
+      <div class="hd-name">${esc(p.name)} ${e.is_winner ? '👑' : ''}</div>
+      <div class="hd-row"><span>Status</span><span>${e.status.charAt(0).toUpperCase()+e.status.slice(1)}</span></div>
+      <div class="hd-row"><span>Maal</span><span>${e.maal}</span></div>
+      <div class="hd-row"><span>Pts</span><span class="${ptsClass(pts)}">${pts > 0 ? '+'+pts : pts}</span></div>
+    </div>`;
   }).join('');
-  return `${betterNote}<div class="hand-detail-grid">${cards}</div>`;
+  return `${note}<div class="hand-detail-grid">${cards}</div>`;
 }
-
-function toggleHandDetail(rowId) {
-  document.getElementById(rowId)?.classList.toggle('open');
-}
+function toggleHandDetail(id) { document.getElementById(id)?.classList.toggle('open'); }
 
 // ── Add Hand ──────────────────────────────────────────────────────────────────
-
 function showAddHand() {
-  if (!currentGame) return;
-  const activePlayers = currentGame.players.filter(p => p.is_active);
-  if (activePlayers.length < 3) {
-    alert('At least 3 players must be active to start a hand.');
-    return;
-  }
-  handEntries = activePlayers.map(p => ({
-    player_id: p.id, name: p.name, status: 'unseen', maal: 0, is_winner: false,
-  }));
-  isBetterGame = false;
-  renderBetterGameToggle();
-  renderHandEntries();
+  const active = currentGame?.players.filter(p => p.is_active) || [];
+  if (active.length < 3) { alert('At least 3 players must be active.'); return; }
+  handEntries = active.map(p => ({ player_id: p.id, name: p.name, status: 'unseen', maal: 0, is_winner: false }));
+  isBetterGame = false; renderBetterGameToggle(); renderHandEntries();
   document.getElementById('add-hand-error').classList.remove('visible');
   document.getElementById('add-hand-success').classList.remove('visible');
   showScreen('screen-add-hand');
 }
-
-function toggleBetterGame() {
-  isBetterGame = !isBetterGame;
-  renderBetterGameToggle();
-}
-
+function toggleBetterGame() { isBetterGame = !isBetterGame; renderBetterGameToggle(); }
 function renderBetterGameToggle() {
-  const el = document.getElementById('better-game-toggle');
-  const cb = document.getElementById('bg-checkbox');
-  el.classList.toggle('active', isBetterGame);
-  cb.textContent = isBetterGame ? '✓' : '';
+  document.getElementById('better-game-toggle').classList.toggle('active', isBetterGame);
+  document.getElementById('bg-checkbox').textContent = isBetterGame ? '✓' : '';
 }
-
 function renderHandEntries() {
-  const container = document.getElementById('hand-entries');
-  container.innerHTML = handEntries.map((e, i) => {
-    const isWinner = e.is_winner;
-    return `
-      <div class="entry-card ${isWinner ? 'winner-card' : ''}" id="entry-card-${i}">
-        <div class="entry-card-top">
-          <div class="entry-player-name">
-            <span class="entry-player-suit">${SUITS[i % SUITS.length]}</span>
-            ${esc(e.name)}
-          </div>
-          <div class="winner-toggle">
-            <input type="radio" name="winner" id="win-${i}" value="${i}"
-              ${isWinner ? 'checked' : ''} onchange="setWinner(${i})">
-            <label class="winner-toggle-label" for="win-${i}">
-              ${isWinner ? '👑 Winner' : 'Winner?'}
-            </label>
-          </div>
+  document.getElementById('hand-entries').innerHTML = handEntries.map((e, i) => `
+    <div class="entry-card ${e.is_winner ? 'winner-card' : ''}">
+      <div class="entry-card-top">
+        <div class="entry-player-name"><span class="entry-player-suit">${SUITS[i%SUITS.length]}</span>${esc(e.name)}</div>
+        <div class="winner-toggle">
+          <input type="radio" name="winner" id="win-${i}" ${e.is_winner ? 'checked' : ''} onchange="setWinner(${i})">
+          <label class="winner-toggle-label" for="win-${i}">${e.is_winner ? '👑 Winner' : 'Winner?'}</label>
         </div>
-        <div class="entry-card-bottom">
-          <div class="status-group">
-            ${['seen','unseen','duplee'].map(s => {
-              const disabled = isWinner && s === 'unseen';
-              return `<button class="status-btn ${e.status === s ? 'active-'+s : ''} ${disabled ? 'status-disabled' : ''}"
-                ${disabled ? 'disabled title="Winner cannot be Unseen"' : `onclick="setStatus(${i},'${s}')"`}>${s}</button>`;
-            }).join('')}
-          </div>
-          <div class="maal-group">
-            <span class="maal-label">Maal</span>
-            <input type="number" class="maal-input" value="${e.maal}" min="0"
-              id="maal-${i}" inputmode="numeric" pattern="[0-9]*"
-              onchange="setMaal(${i},this.value)" oninput="setMaal(${i},this.value)">
-          </div>
+      </div>
+      <div class="entry-card-bottom">
+        <div class="status-group">
+          ${['seen','unseen','duplee'].map(s => {
+            const dis = e.is_winner && s === 'unseen';
+            return `<button class="status-btn ${e.status===s ? 'active-'+s : ''} ${dis ? 'status-disabled' : ''}"
+              ${dis ? 'disabled' : `onclick="setStatus(${i},'${s}')"`}>${s}</button>`;
+          }).join('')}
         </div>
-      </div>`;
-  }).join('');
+        <div class="maal-group">
+          <span class="maal-label">Maal</span>
+          <input type="number" class="maal-input" value="${e.maal}" min="0" id="maal-${i}"
+            inputmode="numeric" pattern="[0-9]*" onchange="setMaal(${i},this.value)" oninput="setMaal(${i},this.value)">
+        </div>
+      </div>
+    </div>`).join('');
 }
-
 function setWinner(idx) {
-  handEntries.forEach((e, i) => {
-    e.is_winner = (i === idx);
-    if (i === idx && e.status === 'unseen') e.status = 'seen';
-  });
+  handEntries.forEach((e, i) => { e.is_winner = i===idx; if (i===idx && e.status==='unseen') e.status='seen'; });
   renderHandEntries();
 }
-
-function setStatus(idx, status) {
-  if (status === 'unseen' && handEntries[idx].is_winner) return;
-  handEntries[idx].status = status;
-  renderHandEntries();
+function setStatus(idx, s) {
+  if (s==='unseen' && handEntries[idx].is_winner) return;
+  handEntries[idx].status = s; renderHandEntries();
 }
-
-function setMaal(idx, val) {
-  const n = parseInt(val, 10);
-  handEntries[idx].maal = isNaN(n) || n < 0 ? 0 : n;
-}
-
-function goToCurrentGame() {
-  if (currentGame) openGame(currentGame.id);
-  else showScreen('screen-home');
-}
-
+function setMaal(idx, val) { const n = parseInt(val,10); handEntries[idx].maal = isNaN(n)||n<0 ? 0 : n; }
+function goToCurrentGame() { if (currentGame) openGame(currentGame.id); else showScreen('screen-home'); }
 async function finalizeHand() {
-  // Sync maal values from inputs before submitting
-  handEntries.forEach((e, i) => {
-    const inp = document.getElementById(`maal-${i}`);
-    if (inp) { const n = parseInt(inp.value, 10); e.maal = isNaN(n) || n < 0 ? 0 : n; }
-  });
-
-  if (!handEntries.some(e => e.is_winner)) {
-    showError('add-hand-error', 'Please select a winner.'); return;
-  }
-
+  handEntries.forEach((e, i) => { const inp = document.getElementById(`maal-${i}`); if (inp) { const n=parseInt(inp.value,10); e.maal=isNaN(n)||n<0?0:n; } });
+  if (!handEntries.some(e => e.is_winner)) { showError('add-hand-error', 'Please select a winner.'); return; }
   loading(true);
   try {
-    await apiFetch(`/games/${currentGame.id}/hands`, {
-      method: 'POST',
-      body: JSON.stringify({
-        better_game: isBetterGame,
-        entries: handEntries.map(e => ({
-          player_id: e.player_id, status: e.status, maal: e.maal, is_winner: e.is_winner,
-        })),
-      }),
-    });
+    await apiFetch(`/games/${currentGame.id}/hands`, { method:'POST', body: JSON.stringify({
+      better_game: isBetterGame,
+      entries: handEntries.map(e => ({ player_id:e.player_id, status:e.status, maal:e.maal, is_winner:e.is_winner })),
+    })});
     showSuccess('add-hand-success', `✓ Hand finalized${isBetterGame ? ' (Better Game — 2×)' : ''}!`);
     setTimeout(() => goToCurrentGame(), 800);
   } catch(e) { showError('add-hand-error', e.message); }
   finally { loading(false); }
 }
 
-// ── Boot ─────────────────────────────────────────────────────────────────────
-loadGameList();
+// ── Share ─────────────────────────────────────────────────────────────────────
+let _currentShareCode = '';
+
+async function showShareDialog() {
+  if (!currentGame) return;
+  loading(true);
+  try {
+    const data = await apiFetch(`/games/${currentGame.id}/share`, { method: 'POST' });
+    _currentShareCode = data.join_code;
+    document.getElementById('share-code-display').textContent = data.join_code;
+    const membersSection = document.getElementById('share-members-section');
+    const membersList    = document.getElementById('share-members-list');
+    if (data.members && data.members.length) {
+      membersSection.style.display = 'block';
+      membersList.innerHTML = data.members.map(m =>
+        `<div class="member-item">${esc(m.name)}</div>`).join('');
+    } else {
+      membersSection.style.display = 'none';
+    }
+    document.getElementById('share-dialog-overlay').classList.add('visible');
+  } catch(e) { alert('Could not get share code: ' + e.message); }
+  finally { loading(false); }
+}
+
+function closeShareDialog() {
+  document.getElementById('share-dialog-overlay').classList.remove('visible');
+}
+
+async function copyJoinCode() {
+  try {
+    await navigator.clipboard.writeText(_currentShareCode);
+    const btn = document.querySelector('#share-dialog-overlay .btn-secondary');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 1800);
+  } catch(_) {
+    prompt('Copy this code:', _currentShareCode);
+  }
+}
+
+document.getElementById('share-dialog-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeShareDialog();
+});
+
+// ── Join ──────────────────────────────────────────────────────────────────────
+function showJoinDialog() {
+  document.getElementById('join-code-input').value = '';
+  document.getElementById('join-error').classList.remove('visible');
+  document.getElementById('join-dialog-overlay').classList.add('visible');
+  setTimeout(() => document.getElementById('join-code-input').focus(), 80);
+}
+
+function closeJoinDialog() {
+  document.getElementById('join-dialog-overlay').classList.remove('visible');
+}
+
+async function doJoinGame() {
+  const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+  if (code.length !== 5) { showError('join-error', 'Code must be 5 characters.'); return; }
+  loading(true);
+  try {
+    const game = await apiFetch('/games/join', { method: 'POST', body: JSON.stringify({ code }) });
+    closeJoinDialog();
+    openGame(game.id);
+  } catch(e) { showError('join-error', e.message); }
+  finally { loading(false); }
+}
+
+document.getElementById('join-dialog-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeJoinDialog();
+});
+document.getElementById('join-code-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doJoinGame();
+});
+
+// ── Boot: check if already logged in ─────────────────────────────────────────
+(async () => {
+  try {
+    currentUser = await apiFetch('/auth/me');
+    renderUserBadge();
+    showScreen('screen-home');
+  } catch(_) {
+    showScreen('screen-auth');
+  }
+})();
 </script>
 </body>
 </html>

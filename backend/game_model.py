@@ -6,7 +6,7 @@ from collections import defaultdict
 from database import get_connection, insert_returning, where_in
 
 
-def create_game(name: str, player_names: list[str]) -> dict:
+def create_game(name: str, player_names: list[str], user_id: int | None = None) -> dict:
     if not 3 <= len(player_names) <= 6:
         raise ValueError("A game requires between 3 and 6 players.")
 
@@ -15,9 +15,9 @@ def create_game(name: str, player_names: list[str]) -> dict:
 
     game = insert_returning(
         cur, conn,
-        sql_pg="INSERT INTO games (name) VALUES (%s) RETURNING id, name, created_at",
-        sql_sqlite="INSERT INTO games (name) VALUES (%s)",
-        params=(name,),
+        sql_pg="INSERT INTO games (name, user_id) VALUES (%s, %s) RETURNING id, name, created_at, user_id",
+        sql_sqlite="INSERT INTO games (name, user_id) VALUES (%s, %s)",
+        params=(name, user_id),
     )
 
     players = []
@@ -40,29 +40,17 @@ def create_game(name: str, player_names: list[str]) -> dict:
 
 
 def add_player(game_id: int, name: str) -> dict:
-    """Add a new player to an existing game."""
     conn = get_connection()
     cur = conn.cursor()
 
-    # Next position = current max + 1
     cur.execute(
         "SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM players WHERE game_id = %s",
         (game_id,),
     )
     next_pos = cur.fetchone()["next_pos"]
 
-    # Total active player count after adding must not exceed 6
-    cur.execute(
-        "SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s AND is_active = %s",
-        (game_id, True if get_connection().__class__.__name__ != '_SQLiteConn' else 1),
-    )
-    # Re-query cleanly
-    cur.execute(
-        "SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s",
-        (game_id,),
-    )
-    total = cur.fetchone()["cnt"]
-    if total >= 6:
+    cur.execute("SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s", (game_id,))
+    if cur.fetchone()["cnt"] >= 6:
         raise ValueError("A game cannot have more than 6 players.")
 
     player = insert_returning(
@@ -80,11 +68,9 @@ def add_player(game_id: int, name: str) -> dict:
 
 
 def set_player_active(player_id: int, is_active: bool) -> dict:
-    """Toggle a player's active status."""
     conn = get_connection()
     cur = conn.cursor()
 
-    # Validate: can't deactivate if it would leave fewer than 3 active in the game
     cur.execute("SELECT game_id FROM players WHERE id = %s", (player_id,))
     row = cur.fetchone()
     if not row:
@@ -92,22 +78,18 @@ def set_player_active(player_id: int, is_active: bool) -> dict:
     game_id = row["game_id"]
 
     if not is_active:
+        from database import DB_BACKEND
+        active_val = True if DB_BACKEND == "postgres" else 1
         cur.execute(
             "SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s AND is_active = %s AND id != %s",
-            (game_id, True if DB_BACKEND_IS_PG() else 1, player_id),
+            (game_id, active_val, player_id),
         )
-        remaining = cur.fetchone()["cnt"]
-        if remaining < 3:
+        if cur.fetchone()["cnt"] < 3:
             raise ValueError("Cannot deactivate: game must always have at least 3 active players.")
 
-    val = True if DB_BACKEND_IS_PG() else 1
-    if not is_active:
-        val = False if DB_BACKEND_IS_PG() else 0
-
-    cur.execute(
-        "UPDATE players SET is_active = %s WHERE id = %s",
-        (is_active if DB_BACKEND_IS_PG() else (1 if is_active else 0), player_id),
-    )
+    from database import DB_BACKEND
+    val = is_active if DB_BACKEND == "postgres" else (1 if is_active else 0)
+    cur.execute("UPDATE players SET is_active = %s WHERE id = %s", (val, player_id))
     conn.commit()
 
     cur.execute("SELECT id, name, position, is_active FROM players WHERE id = %s", (player_id,))
@@ -119,22 +101,39 @@ def set_player_active(player_id: int, is_active: bool) -> dict:
     return player
 
 
-def DB_BACKEND_IS_PG():
-    from database import DB_BACKEND
-    return DB_BACKEND == "postgres"
-
-
-def list_games() -> list[dict]:
+def delete_game(game_id: int) -> None:
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("""
-        SELECT g.id, g.name, g.created_at, g.is_active,
-               COUNT(h.id) AS hand_count
-        FROM games g
-        LEFT JOIN hands h ON h.game_id = g.id
-        GROUP BY g.id
-        ORDER BY g.created_at DESC
-    """)
+    cur.execute("DELETE FROM games WHERE id = %s", (game_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def list_games(user_id: int | None = None) -> list[dict]:
+    conn = get_connection()
+    cur = conn.cursor()
+
+    if user_id is not None:
+        cur.execute("""
+            SELECT g.id, g.name, g.created_at, g.is_active,
+                   COUNT(h.id) AS hand_count
+            FROM games g
+            LEFT JOIN hands h ON h.game_id = g.id
+            WHERE g.user_id = %s
+            GROUP BY g.id
+            ORDER BY g.created_at DESC
+        """, (user_id,))
+    else:
+        cur.execute("""
+            SELECT g.id, g.name, g.created_at, g.is_active,
+                   COUNT(h.id) AS hand_count
+            FROM games g
+            LEFT JOIN hands h ON h.game_id = g.id
+            GROUP BY g.id
+            ORDER BY g.created_at DESC
+        """)
+
     games = [dict(r) for r in cur.fetchall()]
     cur.close()
     conn.close()
@@ -145,11 +144,10 @@ def get_game(game_id: int) -> dict | None:
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT id, name, created_at, is_active FROM games WHERE id = %s", (game_id,))
+    cur.execute("SELECT id, name, created_at, is_active, user_id FROM games WHERE id = %s", (game_id,))
     row = cur.fetchone()
     if not row:
-        cur.close()
-        conn.close()
+        cur.close(); conn.close()
         return None
     game = dict(row)
     game["is_active"] = bool(game["is_active"])
