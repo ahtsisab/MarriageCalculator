@@ -30,6 +30,11 @@ def compute_points(entries: list[dict], better_game: bool = False) -> list[dict]
     if winner_entry["status"] == "unseen":
         raise ValueError("The winner cannot have Unseen status.")
 
+    # Unseen players have no maal
+    for e in entries:
+        if e["status"] == "unseen":
+            e["maal"] = 0
+
     total_maal = sum(e["maal"] for e in entries)
 
     non_winner_total = 0
