@@ -300,10 +300,10 @@ label {
 .player-chip {
   display: flex; align-items: center; gap: 6px;
   background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 20px; padding: 7px 12px; transition: all .15s;
+  border-radius: 20px; padding: 8px 14px; transition: all .15s;
 }
 .player-chip.inactive { opacity: .4; border-style: dashed; }
-.player-chip .chip-name { font-family: 'Lora', serif; font-size: 13px; }
+.player-chip .chip-name { font-family: 'Lora', serif; font-size: 15px; }
 .player-chip .chip-toggle {
   background: none; border: none; font-size: 14px; padding: 0 2px;
   color: var(--text-dim); cursor: pointer; letter-spacing: 0; text-transform: none;
@@ -389,11 +389,11 @@ label {
   letter-spacing: 1px; color: var(--text-dim); padding: 8px 9px;
   text-align: center; border-bottom: 2px solid var(--border); white-space: nowrap;
 }
-.score-table th.player-th { font-family: 'Playfair Display', serif; font-size: 12px; text-transform: none; letter-spacing: 0; color: var(--gold-lt); }
+.score-table th.player-th { font-family: 'Playfair Display', serif; font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--gold-lt); }
 .score-table th.player-th.inactive-th { color: var(--text-mute); font-style: italic; }
-.score-table td { padding: 8px 9px; text-align: center; border-bottom: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: 13px; }
-.score-table .hand-label { font-family: 'Lora', serif; font-size: 12px; color: var(--text-dim); text-align: left; white-space: nowrap; }
-.score-table tfoot td { border-top: 2px solid var(--border); border-bottom: none; font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; padding: 10px 9px; }
+.score-table td { padding: 9px 10px; text-align: center; border-bottom: 1px solid var(--border); font-family: 'Playfair Display', serif; font-size: 15px; }
+.score-table .hand-label { font-family: 'Lora', serif; font-size: 13px; color: var(--text-dim); text-align: left; white-space: nowrap; }
+.score-table tfoot td { border-top: 2px solid var(--border); border-bottom: none; font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; padding: 11px 10px; }
 .pts-pos { color: var(--green-lt); } .pts-neg { color: var(--red-lt); } .pts-zero { color: var(--text-dim); }
 .total-best { color: var(--gold) !important; }
 .winner-icon { font-size: 11px; }
@@ -404,9 +404,9 @@ label {
 .clickable-row { cursor: pointer; }
 .clickable-row:hover td { background: rgba(201,168,76,.03); }
 .hand-detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
-.hand-detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; font-family: 'DM Mono', monospace; font-size: 11px; }
-.hand-detail-card .hd-name { color: var(--gold-lt); font-size: 12px; margin-bottom: 4px; font-family: 'Playfair Display', serif; }
-.hand-detail-card .hd-row { display: flex; justify-content: space-between; color: var(--text-dim); margin-top: 2px; }
+.hand-detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 11px 13px; font-family: 'Lora', serif; font-size: 13px; }
+.hand-detail-card .hd-name { color: var(--gold-lt); font-size: 15px; margin-bottom: 6px; font-family: 'Playfair Display', serif; }
+.hand-detail-card .hd-row { display: flex; justify-content: space-between; color: var(--text-dim); margin-top: 3px; }
 .hand-detail-card .hd-row span:last-child { color: var(--text); }
 
 /* ── Misc ── */
