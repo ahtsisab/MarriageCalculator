@@ -709,12 +709,18 @@ body::before { display: none; }
     </div>
     <div class="card" data-suit="♠">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <h3 style="margin:0">Scoreboard</h3>
+        <div style="display:flex;align-items:center;gap:8px">
+          <h3 style="margin:0">Scoreboard</h3>
+          <button id="scoreboard-chevron" onclick="toggleScoreboardCollapse()"
+            style="background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;padding:0;min-height:0;line-height:1;transition:transform .2s"
+            title="Toggle condensed view">⌃</button>
+        </div>
         <div style="display:flex;gap:8px;align-items:center">
           <button class="btn-ghost btn-sm" id="refresh-btn" onclick="refreshScoreboard()" title="Refresh scoreboard" style="font-size:14px;padding:6px 10px;min-height:0">↻</button>
           <button class="btn-primary btn-sm" id="add-hand-btn" onclick="showAddHand()">+ Add Hand</button>
         </div>
       </div>
+      <div id="scoreboard-full">
       <div class="scoreboard-wrap">
         <table class="score-table">
           <thead id="score-thead"></thead>
@@ -724,6 +730,15 @@ body::before { display: none; }
       </div>
       <div id="scoreboard-empty" class="empty-state" style="display:none">
         <span class="big-suit">♦</span>No hands yet — add the first one!
+      </div>
+      </div><!-- /#scoreboard-full -->
+      <div id="scoreboard-condensed" style="display:none">
+        <div class="scoreboard-wrap">
+          <table class="score-table" id="score-table-condensed">
+            <thead id="score-thead-condensed"></thead>
+            <tbody id="score-tbody-condensed"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -1262,6 +1277,54 @@ function _stopAutoRefresh() {
   if (_autoRefreshTimer) { clearInterval(_autoRefreshTimer); _autoRefreshTimer = null; }
 }
 
+let _scoreboardCollapsed = false;
+
+function toggleScoreboardCollapse() {
+  _scoreboardCollapsed = !_scoreboardCollapsed;
+  document.getElementById('scoreboard-full').style.display      = _scoreboardCollapsed ? 'none' : '';
+  document.getElementById('scoreboard-condensed').style.display = _scoreboardCollapsed ? '' : 'none';
+  const chevron = document.getElementById('scoreboard-chevron');
+  chevron.style.transform = _scoreboardCollapsed ? 'rotate(180deg)' : '';
+}
+
+function renderCondensedScoreboard(players, board) {
+  const { hands, totals } = board;
+  const thead = document.getElementById('score-thead-condensed');
+  const tbody = document.getElementById('score-tbody-condensed');
+  if (!thead || !tbody) return;
+
+  thead.innerHTML = `<tr><th style="text-align:left">Hand</th>${players.map(p =>
+    `<th class="player-th ${p.is_active ? '' : 'inactive-th'}">${esc(p.name)}</th>`).join('')}</tr>`;
+
+  if (!hands.length) { tbody.innerHTML = ''; return; }
+
+  const maxT = Math.max(...players.map(p => totals[p.id] ?? 0));
+  const totalCells = players.map(p => {
+    const t = totals[p.id] ?? 0;
+    const cls = [ptsClass(t), t === maxT && t > 0 ? 'total-best' : ''].filter(Boolean).join(' ');
+    return `<td class="${cls}" style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700">${t > 0 ? '+'+t : t}</td>`;
+  }).join('');
+
+  const lastHand = hands[hands.length - 1];
+  const byPlayer = {}; (lastHand.entries||[]).forEach(e => { byPlayer[e.player_id] = e; });
+  const bb = lastHand.better_game ? `<span class="better-badge">2×</span>` : '';
+  const lastCells = players.map(p => {
+    const e = byPlayer[p.id]; if (!e) return `<td style="color:var(--text-mute)">—</td>`;
+    const icon = e.is_winner ? ` <span class="winner-icon">👑</span>` : '';
+    return `<td class="${ptsClass(e.points)}">${e.points > 0 ? '+'+e.points : e.points}${icon}</td>`;
+  }).join('');
+
+  tbody.innerHTML = `
+    <tr>
+      <td class="hand-label" style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim)">Total</td>
+      ${totalCells}
+    </tr>
+    <tr class="clickable-row" onclick="toggleScoreboardCollapse()">
+      <td class="hand-label">${lastHand.hand_number}${bb} <span style="color:var(--text-mute);font-size:9px">▸</span></td>
+      ${lastCells}
+    </tr>`;
+}
+
 // ── Scoreboard ────────────────────────────────────────────────────────────────
 function renderScoreboard(players, board) {
   const { hands, totals } = board;
@@ -1317,6 +1380,7 @@ function renderScoreboard(players, board) {
       </tr>`;
   }).join('');
 
+  renderCondensedScoreboard(players, board);
 }
 
 function renderHandDetail(hand, players) {
