@@ -664,7 +664,7 @@ body::before { display: none; }
 
   <!-- GAME SCREEN -->
   <div id="screen-game" class="screen">
-    <div class="breadcrumb"><a onclick="showScreen('screen-home')">Home</a> › <span id="game-breadcrumb">Game</span></div>
+    <div class="breadcrumb" id="game-breadcrumb-bar"></div>
     <div class="card-header">
       <h2 style="margin:0"><span class="suit">♥</span> <span id="game-title-text">Game</span></h2>
       <button class="btn-secondary btn-sm" id="share-btn" onclick="showShareDialog()">Share</button>
@@ -819,10 +819,17 @@ let currentGame      = null;
 let handEntries      = [];
 let isBetterGame     = false;
 let _pendingDeleteId = null;
-let currentUser      = null;   // { id, name }
+let currentUser      = null;
+let _adminMode       = false;
 
-const SUITS = ['♠','♥','♦','♣','♠','♥'];
+const SUITS    = ['♠','♥','♦','♣','♠','♥'];
 const SUIT_RED = [false, true, true, false, false, true];
+
+function _renderGameBreadcrumb(gameName) {
+  document.getElementById('game-breadcrumb-bar').innerHTML = _adminMode
+    ? `<a onclick="showScreen('screen-admin')">Admin</a> › ${esc(gameName)}`
+    : `<a onclick="showScreen('screen-home')">Home</a> › ${esc(gameName)}`;
+}
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 function applyTheme(theme) {
@@ -1020,11 +1027,12 @@ async function openGame(gameId) {
       apiFetch(`/games/${gameId}/scoreboard`),
     ]);
     currentGame = game;
+    _adminMode  = false;
     const isOwner = !!game.is_owner;
 
     document.getElementById('game-title-text').textContent     = game.name;
-    document.getElementById('game-breadcrumb').textContent      = game.name;
     document.getElementById('hand-game-breadcrumb').textContent = game.name;
+    _renderGameBreadcrumb(game.name);
     document.getElementById('new-player-name').value = '';
 
     // Show/hide owner-only controls
@@ -1476,9 +1484,10 @@ async function adminOpenGame(gameId, userId) {
 
     // Render as read-only view
     currentGame = { ...game, is_owner: false };
-    document.getElementById('game-title-text').textContent     = game.name;
-    document.getElementById('game-breadcrumb').textContent      = game.name;
-    document.getElementById('hand-game-breadcrumb').textContent = game.name;
+    _adminMode  = true;
+    document.getElementById('game-title-text').textContent      = game.name;
+    document.getElementById('hand-game-breadcrumb').textContent  = game.name;
+    _renderGameBreadcrumb(game.name);
     document.getElementById('add-hand-btn').style.display       = 'none';
     document.getElementById('add-player-section').style.display = 'none';
     document.getElementById('new-player-name').value = '';
