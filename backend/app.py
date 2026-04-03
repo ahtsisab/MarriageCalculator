@@ -17,7 +17,7 @@ def create_app() -> Flask:
         "CORS_ORIGINS",
         "http://localhost:5000,https://ahtsisab.github.io",
     ).split(",")
-    CORS(app, supports_credentials=True, origins=[o.strip() for o in allowed_origins])
+    CORS(app, origins=[o.strip() for o in allowed_origins])
 
     app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
 

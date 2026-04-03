@@ -1,8 +1,12 @@
 """
 REST API routes for Marriage Calculator.
+Token-based auth: server returns a signed JWT-style token on login,
+client stores it in localStorage and sends it as Authorization: Bearer <token>.
+No cookies — works on Safari iOS with cross-origin setups.
 """
 
-from flask import Blueprint, request, jsonify, session
+import hmac, hashlib, base64, json, time, os
+from flask import Blueprint, request, jsonify
 from game_model import (create_game, list_games, get_game, get_scoreboard,
                          add_player, set_player_active, delete_game,
                          get_or_create_join_code, join_game_by_code,
@@ -12,25 +16,63 @@ from user_model import register, login
 
 api = Blueprint("api", __name__, url_prefix="/api")
 
+TOKEN_TTL = 60 * 60 * 24 * 30  # 30 days
+
+
+# ── Token helpers ──────────────────────────────────────────────────────────────
+
+def _secret() -> bytes:
+    return os.environ.get("SECRET_KEY", "dev-secret-change-in-production").encode()
+
+
+def _make_token(user_id: int, user_name: str) -> str:
+    payload = json.dumps({"uid": user_id, "name": user_name, "exp": int(time.time()) + TOKEN_TTL})
+    b64 = base64.urlsafe_b64encode(payload.encode()).decode()
+    sig = hmac.new(_secret(), b64.encode(), hashlib.sha256).hexdigest()
+    return f"{b64}.{sig}"
+
+
+def _verify_token(token: str) -> dict | None:
+    try:
+        b64, sig = token.rsplit(".", 1)
+        expected = hmac.new(_secret(), b64.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, sig):
+            return None
+        payload = json.loads(base64.urlsafe_b64decode(b64).decode())
+        if payload.get("exp", 0) < time.time():
+            return None
+        return payload
+    except Exception:
+        return None
+
+
+def _current_user() -> dict | None:
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return _verify_token(auth[7:])
+    return None
+
+
+def _uid() -> int | None:
+    u = _current_user()
+    return u["uid"] if u else None
+
+
+# ── Response helpers ───────────────────────────────────────────────────────────
 
 def _err(msg: str, status: int = 400):
     return jsonify({"error": msg}), status
-
-def _uid() -> int | None:
-    return session.get("user_id")
 
 def _require_auth():
     if not _uid():
         return _err("Not logged in.", 401)
 
 def _check_access(game):
-    """Return error response if current user can't access game, else None."""
     uid = _uid()
     if game.get("user_id") and not user_can_access(game, uid):
         return _err("Access denied.", 403)
 
 def _require_owner(game):
-    """Return error response if current user is not the game owner."""
     if game.get("user_id") and game["user_id"] != _uid():
         return _err("Only the owner can modify this game.", 403)
 
@@ -44,9 +86,8 @@ def route_register():
         user = register(data.get("name", ""), data.get("pin", ""))
     except ValueError as e:
         return _err(str(e))
-    session["user_id"]   = user["id"]
-    session["user_name"] = user["name"]
-    return jsonify(user), 201
+    token = _make_token(user["id"], user["name"])
+    return jsonify({"id": user["id"], "name": user["name"], "token": token}), 201
 
 @api.post("/auth/login")
 def route_login():
@@ -55,21 +96,20 @@ def route_login():
         user = login(data.get("name", ""), data.get("pin", ""))
     except ValueError as e:
         return _err(str(e))
-    session["user_id"]   = user["id"]
-    session["user_name"] = user["name"]
-    return jsonify(user)
+    token = _make_token(user["id"], user["name"])
+    return jsonify({"id": user["id"], "name": user["name"], "token": token})
 
 @api.post("/auth/logout")
 def route_logout():
-    session.clear()
+    # Stateless tokens — client just discards the token
     return jsonify({"ok": True})
 
 @api.get("/auth/me")
 def route_me():
-    uid = _uid()
-    if not uid:
+    u = _current_user()
+    if not u:
         return _err("Not logged in.", 401)
-    return jsonify({"id": uid, "name": session.get("user_name")})
+    return jsonify({"id": u["uid"], "name": u["name"]})
 
 
 # ── Games ──────────────────────────────────────────────────────────────────────
@@ -82,7 +122,7 @@ def route_list_games():
 @api.post("/games")
 def route_create_game():
     if (e := _require_auth()): return e
-    data = request.get_json(force=True)
+    data    = request.get_json(force=True)
     name    = (data.get("name") or "").strip()
     players = data.get("players", [])
     if not name:
@@ -130,7 +170,6 @@ def route_scoreboard(game_id):
 
 @api.post("/games/<int:game_id>/share")
 def route_share_game(game_id):
-    """Generate (or return existing) join code for a game."""
     if (e := _require_auth()): return e
     game = get_game(game_id)
     if not game: return _err("Game not found.", 404)
@@ -141,7 +180,6 @@ def route_share_game(game_id):
 
 @api.post("/games/join")
 def route_join_game():
-    """Join a game using a code."""
     if (e := _require_auth()): return e
     data = request.get_json(force=True)
     code = (data.get("code") or "").strip().upper()

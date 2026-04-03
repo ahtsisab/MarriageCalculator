@@ -775,11 +775,10 @@ function showSuccess(elId, msg) {
   el.textContent = msg; el.classList.add('visible');
 }
 async function apiFetch(url, opts = {}) {
-  const res = await fetch(API + url, {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    ...opts,
-  });
+  const token = localStorage.getItem('mc-token');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(API + url, { headers, ...opts });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'API error');
   return data;
@@ -816,7 +815,9 @@ async function doLogin() {
   const pin  = document.getElementById('login-pin').value.trim();
   loading(true);
   try {
-    currentUser = await apiFetch('/auth/login', { method:'POST', body: JSON.stringify({ name, pin }) });
+    const resp = await apiFetch('/auth/login', { method:'POST', body: JSON.stringify({ name, pin }) });
+    localStorage.setItem('mc-token', resp.token);
+    currentUser = { id: resp.id, name: resp.name };
     renderUserBadge();
     showScreen('screen-home');
   } catch(e) { showError('login-error', e.message); }
@@ -830,7 +831,9 @@ async function doRegister() {
   if (pin !== pin2) { showError('reg-error', 'PINs do not match.'); return; }
   loading(true);
   try {
-    currentUser = await apiFetch('/auth/register', { method:'POST', body: JSON.stringify({ name, pin }) });
+    const resp = await apiFetch('/auth/register', { method:'POST', body: JSON.stringify({ name, pin }) });
+    localStorage.setItem('mc-token', resp.token);
+    currentUser = { id: resp.id, name: resp.name };
     renderUserBadge();
     showScreen('screen-home');
   } catch(e) { showError('reg-error', e.message); }
@@ -838,16 +841,10 @@ async function doRegister() {
 }
 
 async function doLogout() {
-  loading(true);
-  try {
-    await apiFetch('/auth/logout', { method: 'POST' });
-  } catch(_) {}
-  finally {
-    currentUser = null;
-    renderUserBadge();
-    loading(false);
-    showScreen('screen-auth');
-  }
+  localStorage.removeItem('mc-token');
+  currentUser = null;
+  renderUserBadge();
+  showScreen('screen-auth');
 }
 
 // ── Home / Game List ──────────────────────────────────────────────────────────
@@ -1209,13 +1206,18 @@ document.getElementById('join-code-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') doJoinGame();
 });
 
-// ── Boot: check if already logged in ─────────────────────────────────────────
+// ── Boot: restore session from stored token ───────────────────────────────────
 (async () => {
+  const token = localStorage.getItem('mc-token');
+  if (!token) { showScreen('screen-auth'); return; }
   try {
-    currentUser = await apiFetch('/auth/me');
+    const user = await apiFetch('/auth/me');
+    currentUser = { id: user.id, name: user.name };
     renderUserBadge();
     showScreen('screen-home');
   } catch(_) {
+    // Token expired or invalid — clear it and show auth
+    localStorage.removeItem('mc-token');
     showScreen('screen-auth');
   }
 })();
