@@ -12,7 +12,12 @@ from routes import api
 
 def create_app() -> Flask:
     app = Flask(__name__, static_folder="../frontend", static_url_path="")
-    CORS(app, supports_credentials=True)
+
+    allowed_origins = os.environ.get(
+        "CORS_ORIGINS",
+        "http://localhost:5000",
+    ).split(",")
+    CORS(app, supports_credentials=True, origins=allowed_origins)
 
     app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
 
