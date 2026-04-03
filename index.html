@@ -102,6 +102,17 @@
   .game-item-name { font-family: 'Playfair Display', serif; font-size: 16px; }
   .game-item-meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); margin-top: 3px; }
   .game-item-badge { font-family: 'DM Mono', monospace; font-size: 11px; padding: 4px 10px; border-radius: 20px; background: rgba(201,168,76,.1); color: var(--gold); border: 1px solid var(--gold-dim); }
+  .game-item-right { display: flex; align-items: center; gap: 10px; }
+  .game-item-delete { background: none; border: none; color: var(--text-mute); font-size: 16px; padding: 4px 6px; letter-spacing: 0; text-transform: none; border-radius: 4px; line-height: 1; transition: color .15s, background .15s; }
+  .game-item-delete:hover { color: var(--red-lt); background: rgba(192,57,43,.1); }
+
+  /* Confirm dialog */
+  .dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 200; }
+  .dialog-overlay.visible { display: flex; }
+  .dialog-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 32px; max-width: 380px; width: 90%; box-shadow: var(--shadow); }
+  .dialog-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--gold-lt); margin-bottom: 10px; }
+  .dialog-msg { font-size: 14px; color: var(--text-dim); margin-bottom: 24px; line-height: 1.5; }
+  .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
   .player-count-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .count-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); padding: 10px 18px; font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; border-radius: var(--radius); transition: all .15s; }
@@ -247,15 +258,11 @@
 
   <!-- HOME -->
   <div id="screen-home" class="screen active">
-    <h2><span class="suit">♠</span> Welcome</h2>
-    <div class="row" style="margin-bottom:32px">
-      <button class="btn-primary" onclick="showScreen('screen-new-game')">+ New Game</button>
-      <button class="btn-secondary" onclick="loadGameList()">Continue Game</button>
+    <div class="card-header" style="margin-bottom:20px">
+      <h2 style="margin:0"><span class="suit">♠</span> Saved Games</h2>
+      <button class="btn-primary btn-sm" onclick="showScreen('screen-new-game')">+ New Game</button>
     </div>
-    <div id="game-list-section" style="display:none">
-      <h3>Saved Games</h3>
-      <div id="game-list" class="game-list"></div>
-    </div>
+    <div id="game-list" class="game-list"></div>
   </div>
 
   <!-- NEW GAME -->
@@ -378,7 +385,17 @@
 
 </div>
 
-<script>
+<!-- Delete confirmation dialog -->
+<div id="dialog-overlay" class="dialog-overlay">
+  <div class="dialog-box">
+    <div class="dialog-title">Delete Game?</div>
+    <div class="dialog-msg" id="dialog-msg"></div>
+    <div class="dialog-actions">
+      <button class="btn-ghost" onclick="closeDialog()">Cancel</button>
+      <button class="btn-danger" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
 const API = 'https://marriagecalculator-production.up.railway.app/api';
 let currentGame = null;
 let handEntries = [];
@@ -391,6 +408,7 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
+  if (id === 'screen-home') loadGameList();
 }
 function loading(on) { document.getElementById('loading-overlay').classList.toggle('visible', on); }
 function showError(elId, msg) {
@@ -418,28 +436,61 @@ function esc(s) {
 }
 
 // ── Home ───────────────────────────────────────────────
+let _pendingDeleteId = null;
+
 async function loadGameList() {
   loading(true);
   try {
     const games = await apiFetch('/games');
-    const section = document.getElementById('game-list-section');
     const list = document.getElementById('game-list');
-    section.style.display = 'block';
     if (!games.length) {
-      list.innerHTML = '<div class="empty-state"><span class="big-suit">♠</span>No saved games found.</div>';
+      list.innerHTML = '<div class="empty-state"><span class="big-suit">♠</span>No saved games yet. Start a new one!</div>';
       return;
     }
     list.innerHTML = games.map(g => `
       <div class="game-item" onclick="openGame(${g.id})">
         <div>
           <div class="game-item-name">${esc(g.name)}</div>
-          <div class="game-item-meta">${fmtDate(g.created_at)}</div>
+          <div class="game-item-meta">${fmtDate(g.created_at)} · ${g.hand_count} hand${g.hand_count !== 1 ? 's' : ''}</div>
         </div>
-        <span class="game-item-badge">${g.hand_count} hand${g.hand_count !== 1 ? 's' : ''}</span>
+        <div class="game-item-right">
+          <span class="game-item-badge">${g.hand_count} hand${g.hand_count !== 1 ? 's' : ''}</span>
+          <button class="game-item-delete" title="Delete game"
+            onclick="event.stopPropagation(); promptDelete(${g.id}, '${esc(g.name)}')">🗑</button>
+        </div>
       </div>`).join('');
   } catch(e) { alert('Could not load games: ' + e.message); }
   finally { loading(false); }
 }
+
+function promptDelete(gameId, gameName) {
+  _pendingDeleteId = gameId;
+  document.getElementById('dialog-msg').textContent =
+    `"${gameName}" and all its hands will be permanently deleted. This cannot be undone.`;
+  document.getElementById('dialog-overlay').classList.add('visible');
+}
+
+function closeDialog() {
+  _pendingDeleteId = null;
+  document.getElementById('dialog-overlay').classList.remove('visible');
+}
+
+async function confirmDelete() {
+  if (!_pendingDeleteId) return;
+  const id = _pendingDeleteId;
+  closeDialog();
+  loading(true);
+  try {
+    await apiFetch(`/games/${id}`, { method: 'DELETE' });
+    await loadGameList();
+  } catch(e) { alert('Could not delete game: ' + e.message); }
+  finally { loading(false); }
+}
+
+// Close dialog on overlay click
+document.getElementById('dialog-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeDialog();
+});
 
 // ── New Game ───────────────────────────────────────────
 let selectedPlayerCount = 0;
@@ -741,6 +792,8 @@ async function finalizeHand() {
   } catch(e) { showError('add-hand-error', e.message); }
   finally { loading(false); }
 }
+// Load game list immediately on startup
+loadGameList();
 </script>
 </body>
 </html>
