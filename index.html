@@ -672,7 +672,10 @@ body::before { display: none; }
     <div class="card" data-suit="♠">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <h3 style="margin:0">Scoreboard</h3>
-        <button class="btn-primary btn-sm" id="add-hand-btn" onclick="showAddHand()">+ Add Hand</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn-ghost btn-sm" id="refresh-btn" onclick="refreshScoreboard()" title="Refresh scoreboard" style="font-size:14px;padding:6px 10px;min-height:0">↻</button>
+          <button class="btn-primary btn-sm" id="add-hand-btn" onclick="showAddHand()">+ Add Hand</button>
+        </div>
       </div>
       <div class="scoreboard-wrap">
         <table class="score-table">
@@ -1133,6 +1136,22 @@ async function addPlayer() {
   finally { loading(false); }
 }
 
+async function refreshScoreboard() {
+  if (!currentGame) return;
+  const btn = document.getElementById('refresh-btn');
+  btn.style.opacity = '.4';
+  btn.style.pointerEvents = 'none';
+  try {
+    const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
+    renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
+    renderScoreboard(currentGame.players, board);
+  } catch(e) { alert('Could not refresh: ' + e.message); }
+  finally {
+    btn.style.opacity = '';
+    btn.style.pointerEvents = '';
+  }
+}
+
 // ── Scoreboard ────────────────────────────────────────────────────────────────
 function renderScoreboard(players, board) {
   const { hands, totals } = board;
@@ -1202,7 +1221,7 @@ function toggleHandDetail(id) { document.getElementById(id)?.classList.toggle('o
 function showAddHand() {
   const active = currentGame?.players.filter(p => p.is_active) || [];
   if (active.length < 3) { alert('At least 3 players must be active.'); return; }
-  handEntries = active.map(p => ({ player_id: p.id, name: p.name, status: 'unseen', maal: 0, is_winner: false }));
+  handEntries = active.map(p => ({ player_id: p.id, name: p.name, status: 'unseen', maal: null, is_winner: false }));
   isBetterGame = false; renderBetterGameToggle(); renderHandEntries();
   document.getElementById('add-hand-error').classList.remove('visible');
   document.getElementById('add-hand-success').classList.remove('visible');
@@ -1234,8 +1253,8 @@ function renderHandEntries() {
         </div>
         <div class="maal-group">
           <span class="maal-label">Maal</span>
-          <input type="number" class="maal-input" value="${e.status === 'unseen' ? 0 : e.maal}" min="0" id="maal-${i}"
-            inputmode="numeric" pattern="[0-9]*"
+          <input type="number" class="maal-input" value="${e.status === 'unseen' ? '' : (e.maal ?? '')}" min="0" id="maal-${i}"
+            inputmode="numeric" pattern="[0-9]*" placeholder="0"
             ${e.status === 'unseen' ? 'disabled style="opacity:.35;pointer-events:none"' : `onchange="setMaal(${i},this.value)" oninput="setMaal(${i},this.value)"`}>
         </div>
       </div>
@@ -1248,19 +1267,22 @@ function setWinner(idx) {
 function setStatus(idx, s) {
   if (s==='unseen' && handEntries[idx].is_winner) return;
   handEntries[idx].status = s;
-  if (s === 'unseen') handEntries[idx].maal = 0;
+  if (s === 'unseen') handEntries[idx].maal = null;
   renderHandEntries();
 }
-function setMaal(idx, val) { const n = parseInt(val,10); handEntries[idx].maal = isNaN(n)||n<0 ? 0 : n; }
+function setMaal(idx, val) {
+  const n = parseInt(val, 10);
+  handEntries[idx].maal = (val === '' || isNaN(n) || n < 0) ? null : n;
+}
 function goToCurrentGame() { if (currentGame) openGame(currentGame.id); else showScreen('screen-home'); }
 async function finalizeHand() {
-  handEntries.forEach((e, i) => { const inp = document.getElementById(`maal-${i}`); if (inp) { const n=parseInt(inp.value,10); e.maal=isNaN(n)||n<0?0:n; } });
+  handEntries.forEach((e, i) => { const inp = document.getElementById(`maal-${i}`); if (inp) { const n=parseInt(inp.value,10); e.maal = (inp.value===''||isNaN(n)||n<0) ? null : n; } });
   if (!handEntries.some(e => e.is_winner)) { showError('add-hand-error', 'Please select a winner.'); return; }
   loading(true);
   try {
     await apiFetch(`/games/${currentGame.id}/hands`, { method:'POST', body: JSON.stringify({
       better_game: isBetterGame,
-      entries: handEntries.map(e => ({ player_id:e.player_id, status:e.status, maal:e.maal, is_winner:e.is_winner })),
+      entries: handEntries.map(e => ({ player_id:e.player_id, status:e.status, maal: e.maal ?? 0, is_winner:e.is_winner })),
     })});
     showSuccess('add-hand-success', `✓ Hand finalized${isBetterGame ? ' (Better Game — 2×)' : ''}!`);
     setTimeout(() => goToCurrentGame(), 800);
