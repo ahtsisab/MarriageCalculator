@@ -353,6 +353,33 @@ def route_get_hand(hand_id):
     return jsonify(hand)
 
 
+@api.delete("/hands/<int:hand_id>")
+def route_delete_hand(hand_id):
+    if (e := _require_auth()): return e
+    hand = get_hand(hand_id)
+    if not hand: return _err("Hand not found.", 404)
+    game = get_game(hand["game_id"])
+    if not game: return _err("Game not found.", 404)
+    if (e := _require_owner(game)): return e
+    # Only allow deleting the last hand
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute(
+        "SELECT id FROM hands WHERE game_id = %s ORDER BY hand_number DESC LIMIT 1",
+        (hand["game_id"],),
+    )
+    last = cur.fetchone()
+    cur.close(); conn.close()
+    if not last or last["id"] != hand_id:
+        return _err("Only the last hand can be deleted.", 400)
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute("DELETE FROM hands WHERE id = %s", (hand_id,))
+    conn.commit()
+    cur.close(); conn.close()
+    return jsonify({"deleted": hand_id})
+
+
 # ── Admin ──────────────────────────────────────────────────────────────────────
 
 def _require_admin():

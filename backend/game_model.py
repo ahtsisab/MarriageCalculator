@@ -40,6 +40,12 @@ def _unique_join_code(cur) -> str:
 def create_game(name: str, player_names: list[str], user_id: int | None = None) -> dict:
     if not 3 <= len(player_names) <= 6:
         raise ValueError("A game requires between 3 and 6 players.")
+    seen = set()
+    for n in player_names:
+        key = n.strip().lower()
+        if key in seen:
+            raise ValueError(f"Duplicate player name: '{n.strip()}'. All player names must be unique.")
+        seen.add(key)
 
     conn = get_connection()
     cur  = conn.cursor()
@@ -268,6 +274,7 @@ def user_can_access(game: dict, user_id: int) -> bool:
 # ── Player CRUD ───────────────────────────────────────────────────────────────
 
 def add_player(game_id: int, name: str) -> dict:
+    name = name.strip()
     conn = get_connection()
     cur  = conn.cursor()
 
@@ -275,6 +282,14 @@ def add_player(game_id: int, name: str) -> dict:
     if cur.fetchone()["cnt"] >= 6:
         cur.close(); conn.close()
         raise ValueError("A game cannot have more than 6 players.")
+
+    cur.execute(
+        "SELECT 1 FROM players WHERE game_id = %s AND lower(name) = lower(%s)",
+        (game_id, name),
+    )
+    if cur.fetchone():
+        cur.close(); conn.close()
+        raise ValueError(f"A player named '{name}' is already in this game.")
 
     cur.execute(
         "SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM players WHERE game_id = %s",
@@ -301,10 +316,19 @@ def rename_player(player_id: int, name: str) -> dict:
     conn = get_connection()
     cur  = conn.cursor()
 
-    cur.execute("SELECT id FROM players WHERE id = %s", (player_id,))
-    if not cur.fetchone():
+    cur.execute("SELECT id, game_id FROM players WHERE id = %s", (player_id,))
+    row = cur.fetchone()
+    if not row:
         cur.close(); conn.close()
         raise ValueError("Player not found.")
+
+    cur.execute(
+        "SELECT 1 FROM players WHERE game_id = %s AND lower(name) = lower(%s) AND id != %s",
+        (row["game_id"], name, player_id),
+    )
+    if cur.fetchone():
+        cur.close(); conn.close()
+        raise ValueError(f"A player named '{name}' is already in this game.")
 
     cur.execute("UPDATE players SET name = %s WHERE id = %s", (name, player_id))
     conn.commit()

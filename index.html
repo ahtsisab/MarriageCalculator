@@ -1118,9 +1118,12 @@ async function createGame() {
   if (!name) { showError('new-game-error', 'Please enter a game name.'); return; }
   if (!selectedPlayerCount) { showError('new-game-error', 'Please select the number of players.'); return; }
   const players = [];
+  const seen = new Set();
   for (let i = 0; i < selectedPlayerCount; i++) {
     const v = (document.getElementById(`pname-${i}`)?.value || '').trim();
     if (!v) { showError('new-game-error', `Please enter a name for Player ${i+1}.`); return; }
+    if (seen.has(v.toLowerCase())) { showError('new-game-error', `"${v}" is already in the list. Player names must be unique.`); return; }
+    seen.add(v.toLowerCase());
     players.push(v);
   }
   loading(true);
@@ -1140,6 +1143,7 @@ async function openGame(gameId) {
       apiFetch(`/games/${gameId}/scoreboard`),
     ]);
     currentGame = game;
+    currentGame._lastBoard = board;
     _adminMode  = false;
     const isOwner = !!game.is_owner;
 
@@ -1192,6 +1196,7 @@ function renderPlayerRoster(players, isOwner, board) {
 
 async function _refreshGameView() {
   const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
+  currentGame._lastBoard = board;
   renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
   renderScoreboard(currentGame.players, board);
   return board;
@@ -1241,6 +1246,8 @@ async function doDeletePlayer(pid, name) {
 async function addPlayer() {
   const name = document.getElementById('new-player-name').value.trim();
   if (!name) { showError('add-player-error', 'Enter a player name.'); return; }
+  const existing = currentGame.players.map(p => p.name.toLowerCase());
+  if (existing.includes(name.toLowerCase())) { showError('add-player-error', `"${name}" is already in this game.`); return; }
   loading(true);
   try {
     const player = await apiFetch(`/games/${currentGame.id}/players`, { method:'POST', body: JSON.stringify({ name }) });
@@ -1368,9 +1375,10 @@ function renderScoreboard(players, board) {
     </tr>
     <tr><td colspan="${players.length+1}" style="padding:0;border-bottom:2px solid var(--border)"></td></tr>`;
 
-  tbody.innerHTML = hands.map(h => {
+  tbody.innerHTML = hands.map((h, idx) => {
     const byPlayer = {}; (h.entries||[]).forEach(e => { byPlayer[e.player_id] = e; });
-    const rowId = `expand-${h.id}`;
+    const rowId  = `expand-${h.id}`;
+    const isLast = idx === hands.length - 1;
     const bb = h.better_game ? `<span class="better-badge">2×</span>` : '';
     const cells = players.map(p => {
       const e = byPlayer[p.id]; if (!e) return `<td style="color:var(--text-mute)">—</td>`;
@@ -1382,14 +1390,14 @@ function renderScoreboard(players, board) {
         <td class="hand-label">${h.hand_number}${bb} <span style="color:var(--text-mute);font-size:9px">▸</span></td>${cells}
       </tr>
       <tr class="hand-expand-row" id="${rowId}">
-        <td colspan="${players.length+1}">${renderHandDetail(h, players)}</td>
+        <td colspan="${players.length+1}">${renderHandDetail(h, players, isLast)}</td>
       </tr>`;
   }).join('');
 
   renderCondensedScoreboard(players, board);
 }
 
-function renderHandDetail(hand, players) {
+function renderHandDetail(hand, players, isLast) {
   const byPlayer = {}; (hand.entries||[]).forEach(e => { byPlayer[e.player_id] = e; });
   const note = hand.better_game ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);margin-bottom:8px">★ Better Game — points doubled</div>` : '';
   const cards = players.map(p => {
@@ -1403,7 +1411,10 @@ function renderHandDetail(hand, players) {
       <div class="hd-row"><span>Pts</span><span class="${ptsClass(pts)}">${pts > 0 ? '+'+pts : pts}</span></div>
     </div>`;
   }).join('');
-  return `${note}<div class="hand-detail-grid">${cards}</div>`;
+  const editBtn = (isLast && currentGame?.is_owner)
+    ? `<div style="margin-top:10px"><button class="btn-ghost btn-sm" onclick="editLastHand(${hand.id})">✏️ Edit this hand</button></div>`
+    : '';
+  return `${note}<div class="hand-detail-grid">${cards}</div>${editBtn}`;
 }
 function toggleHandDetail(id) { document.getElementById(id)?.classList.toggle('open'); }
 
@@ -1411,8 +1422,10 @@ function toggleHandDetail(id) { document.getElementById(id)?.classList.toggle('o
 function showAddHand() {
   const active = currentGame?.players.filter(p => p.is_active) || [];
   if (active.length < 3) { alert('At least 3 players must be active.'); return; }
+  _editingHandId = null;
   handEntries = active.map(p => ({ player_id: p.id, name: p.name, status: 'unseen', maal: null, is_winner: false }));
   isBetterGame = false; renderBetterGameToggle(); renderHandEntries();
+  document.querySelector('#screen-add-hand h2').innerHTML = `<span class="suit">♦</span> Add Hand`;
   document.getElementById('add-hand-error').classList.remove('visible');
   document.getElementById('add-hand-success').classList.remove('visible');
   showScreen('screen-add-hand');
@@ -1465,17 +1478,69 @@ function setMaal(idx, val) {
   const n = parseInt(val, 10);
   handEntries[idx].maal = (val === '' || isNaN(n) || n < 0) ? null : n;
 }
+let _editingHandId = null;
+
+function editLastHand(handId) {
+  // Find the hand data in the current board
+  const board = currentGame._lastBoard;
+  const hand  = board?.hands?.find(h => h.id === handId);
+  if (!hand) { alert('Could not find hand data — try refreshing.'); return; }
+
+  _editingHandId = handId;
+
+  // Pre-fill entries from the existing hand
+  // Include all current active players; pre-fill data for those who played
+  const byPlayer = {};
+  (hand.entries || []).forEach(e => { byPlayer[e.player_id] = e; });
+
+  // Use the players who were in that hand (preserving inactive ones that played)
+  const playerIds = hand.entries.map(e => e.player_id);
+  handEntries = playerIds.map(pid => {
+    const player = currentGame.players.find(p => p.id === pid)
+                 || { id: pid, name: byPlayer[pid]?.player_name || '?' };
+    const e = byPlayer[pid];
+    return {
+      player_id: pid,
+      name: player.name || e.player_name,
+      status: e.status,
+      maal: e.maal === 0 && e.status === 'unseen' ? null : e.maal,
+      is_winner: e.is_winner,
+    };
+  });
+
+  isBetterGame = hand.better_game;
+  renderBetterGameToggle();
+  renderHandEntries();
+
+  // Update screen title to indicate edit mode
+  document.querySelector('#screen-add-hand h2').innerHTML =
+    `<span class="suit">✏️</span> Edit Hand ${hand.hand_number}`;
+
+  document.getElementById('add-hand-error').classList.remove('visible');
+  document.getElementById('add-hand-success').classList.remove('visible');
+  showScreen('screen-add-hand');
+}
+
 function goToCurrentGame() { if (currentGame) openGame(currentGame.id); else showScreen('screen-home'); }
+
 async function finalizeHand() {
   handEntries.forEach((e, i) => { const inp = document.getElementById(`maal-${i}`); if (inp) { const n=parseInt(inp.value,10); e.maal = (inp.value===''||isNaN(n)||n<0) ? null : n; } });
   if (!handEntries.some(e => e.is_winner)) { showError('add-hand-error', 'Please select a winner.'); return; }
   loading(true);
   try {
-    await apiFetch(`/games/${currentGame.id}/hands`, { method:'POST', body: JSON.stringify({
+    const payload = {
       better_game: isBetterGame,
       entries: handEntries.map(e => ({ player_id:e.player_id, status:e.status, maal: e.maal ?? 0, is_winner:e.is_winner })),
-    })});
-    showSuccess('add-hand-success', `✓ Hand finalized${isBetterGame ? ' (Better Game — 2×)' : ''}!`);
+    };
+    if (_editingHandId) {
+      // Delete old hand first, then post new one
+      await apiFetch(`/hands/${_editingHandId}`, { method: 'DELETE' });
+      _editingHandId = null;
+    }
+    await apiFetch(`/games/${currentGame.id}/hands`, { method:'POST', body: JSON.stringify(payload) });
+    showSuccess('add-hand-success', `✓ Hand saved${isBetterGame ? ' (Better Game — 2×)' : ''}!`);
+    // Reset title
+    document.querySelector('#screen-add-hand h2').innerHTML = `<span class="suit">♦</span> Add Hand`;
     setTimeout(() => goToCurrentGame(), 800);
   } catch(e) { showError('add-hand-error', e.message); }
   finally { loading(false); }
