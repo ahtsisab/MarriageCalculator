@@ -1154,7 +1154,7 @@ async function openGame(gameId) {
 
     // Show/hide owner-only controls
     document.getElementById('add-hand-btn').style.display       = isOwner ? '' : 'none';
-    document.getElementById('add-player-section').style.display = isOwner && game.players.length < 6 ? 'block' : 'none';
+    document.getElementById('add-player-section').style.display = isOwner ? 'block' : 'none';
 
     renderPlayerRoster(game.players, isOwner, board);
     renderScoreboard(game.players, board);
@@ -1175,7 +1175,7 @@ function renderPlayerRoster(players, isOwner, board) {
   document.getElementById('player-roster').innerHTML = players.map(p => {
     const canDelete    = isOwner && !playedIds.has(p.id);
     // Hide the deactivate switch if this player is active and we're at the minimum
-    const canDeactivate = p.is_active ? activeCount > 3 : true;
+    const canDeactivate = p.is_active ? activeCount > 3 : activeCount < 6;
 
     return `
     <div class="player-chip ${p.is_active ? '' : 'inactive'}">
@@ -1237,8 +1237,7 @@ async function doDeletePlayer(pid, name) {
     await apiFetch(`/players/${pid}`, { method:'DELETE' });
     currentGame.players = currentGame.players.filter(p => p.id !== pid);
     await _refreshGameView();
-    document.getElementById('add-player-section').style.display =
-      currentGame.is_owner && currentGame.players.length < 6 ? 'block' : 'none';
+    document.getElementById('add-player-section').style.display = currentGame.is_owner ? 'block' : 'none';
   } catch(e) { alert('Could not delete: ' + e.message); }
   finally { loading(false); }
 }
@@ -1248,6 +1247,8 @@ async function addPlayer() {
   if (!name) { showError('add-player-error', 'Enter a player name.'); return; }
   const existing = currentGame.players.map(p => p.name.toLowerCase());
   if (existing.includes(name.toLowerCase())) { showError('add-player-error', `"${name}" is already in this game.`); return; }
+  const activeCount = currentGame.players.filter(p => p.is_active).length;
+  if (activeCount >= 6) { showError('add-player-error', 'Already 6 active players. Deactivate one before adding more.'); return; }
   loading(true);
   try {
     const player = await apiFetch(`/games/${currentGame.id}/players`, { method:'POST', body: JSON.stringify({ name }) });
@@ -1255,8 +1256,7 @@ async function addPlayer() {
     currentGame.players.push(player);
     document.getElementById('new-player-name').value = '';
     await _refreshGameView();
-    document.getElementById('add-player-section').style.display =
-      currentGame.is_owner && currentGame.players.length < 6 ? 'block' : 'none';
+    document.getElementById('add-player-section').style.display = currentGame.is_owner ? 'block' : 'none';
   } catch(e) { showError('add-player-error', e.message); }
   finally { loading(false); }
 }

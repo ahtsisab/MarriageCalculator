@@ -39,7 +39,7 @@ def _unique_join_code(cur) -> str:
 
 def create_game(name: str, player_names: list[str], user_id: int | None = None) -> dict:
     if not 3 <= len(player_names) <= 6:
-        raise ValueError("A game requires between 3 and 6 players.")
+        raise ValueError("A game must start with between 3 and 6 players.")
     seen = set()
     for n in player_names:
         key = n.strip().lower()
@@ -278,10 +278,14 @@ def add_player(game_id: int, name: str) -> dict:
     conn = get_connection()
     cur  = conn.cursor()
 
-    cur.execute("SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s", (game_id,))
+    cur.execute(
+        "SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s AND is_active = %s",
+        (game_id, _bool_val(True)),
+    )
+    # New players are added as active — cap active players at 6
     if cur.fetchone()["cnt"] >= 6:
         cur.close(); conn.close()
-        raise ValueError("A game cannot have more than 6 players.")
+        raise ValueError("Cannot add player: already 6 active players. Deactivate one first.")
 
     cur.execute(
         "SELECT 1 FROM players WHERE game_id = %s AND lower(name) = lower(%s)",
@@ -357,6 +361,14 @@ def set_player_active(player_id: int, is_active: bool) -> dict:
         if cur.fetchone()["cnt"] < 3:
             cur.close(); conn.close()
             raise ValueError("Cannot deactivate: at least 3 active players required.")
+    else:
+        cur.execute(
+            "SELECT COUNT(*) AS cnt FROM players WHERE game_id = %s AND is_active = %s",
+            (game_id, _bool_val(True)),
+        )
+        if cur.fetchone()["cnt"] >= 6:
+            cur.close(); conn.close()
+            raise ValueError("Cannot activate: already 6 active players. Deactivate one first.")
 
     cur.execute("UPDATE players SET is_active = %s WHERE id = %s", (_bool_val(is_active), player_id))
     conn.commit()
