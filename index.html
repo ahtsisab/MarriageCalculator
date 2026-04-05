@@ -466,7 +466,18 @@ label {
 .member-item { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
 .member-item::before { content: '◈'; color: var(--gold-dim); font-size: 10px; }
 
-/* ── Player name suggestion pills ── */
+/* ── End game settlement ── */
+.settlement-card {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px;
+}
+.settlement-from { font-family: 'Lora', serif; font-size: 15px; color: var(--red-lt); flex: 1; }
+.settlement-arrow { color: var(--text-mute); font-size: 13px; }
+.settlement-to   { font-family: 'Lora', serif; font-size: 15px; color: var(--green-lt); flex: 1; text-align: right; }
+.settlement-amount { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; color: var(--gold); text-align: center; min-width: 70px; }
+.settlement-zero { text-align: center; color: var(--text-mute); font-family: 'DM Mono', monospace; font-size: 12px; padding: 16px 0; }
+
+
 .suggestion-pill {
   font-family: 'Lora', serif; font-size: 13px;
   padding: 5px 12px; border-radius: 20px; cursor: pointer;
@@ -663,6 +674,22 @@ body::before { display: none; }
     <h2><span class="suit">♣</span> New Game</h2>
     <div class="card">
       <div class="field"><label>Game Name</label><input type="text" id="new-game-name" placeholder="e.g. Friday Night, Dashain 2081…" autocomplete="off"></div>
+      <div class="field">
+        <label>Stake per Point</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:4px;flex-wrap:wrap" id="currency-btns">
+            <button class="count-btn selected" data-currency="USD" data-symbol="$" onclick="setCurrency(this)">$ USD</button>
+            <button class="count-btn" data-currency="NPR" data-symbol="Rs" onclick="setCurrency(this)">Rs NPR</button>
+            <button class="count-btn" data-currency="EUR" data-symbol="€" onclick="setCurrency(this)">€ EUR</button>
+            <button class="count-btn" data-currency="GBP" data-symbol="£" onclick="setCurrency(this)">£ GBP</button>
+            <button class="count-btn" data-currency="INR" data-symbol="₹" onclick="setCurrency(this)">₹ INR</button>
+            <button class="count-btn" data-currency="CAD" data-symbol="C$" onclick="setCurrency(this)">C$ CAD</button>
+          </div>
+          <input type="number" id="stake-input" value="0.25" min="0" step="0.01"
+            style="width:80px;font-family:'DM Mono',monospace;font-size:15px;padding:8px 10px;text-align:right"
+            inputmode="decimal">
+        </div>
+      </div>
       <div id="suggestion-pills" style="display:none;margin-bottom:14px">
         <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-mute);margin-bottom:8px">Previous players — tap to add</div>
         <div id="suggestion-pill-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
@@ -693,7 +720,10 @@ body::before { display: none; }
     <div class="breadcrumb" id="game-breadcrumb-bar"></div>
     <div class="card-header">
       <h2 style="margin:0"><span class="suit">♥</span> <span id="game-title-text">Game</span></h2>
-      <button class="btn-secondary btn-sm" id="share-btn" onclick="showShareDialog()">Share</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary btn-sm" id="share-btn" onclick="showShareDialog()">Share</button>
+        <button class="btn-ghost btn-sm" id="end-game-btn" onclick="showEndGame()" style="color:var(--red-lt);border-color:rgba(192,57,43,.3)">End Game</button>
+      </div>
     </div>
     <div class="card" style="margin-bottom:12px" data-suit="♣">
       <div class="card-header">
@@ -786,7 +816,17 @@ body::before { display: none; }
   </div>
 </div>
 
-<!-- Admin login dialog -->
+<!-- End Game / Settlement dialog -->
+<div id="end-game-overlay" class="dialog-overlay" style="align-items:center">
+  <div class="dialog-box" style="border-radius:12px;max-height:85vh;overflow-y:auto;padding-bottom:calc(24px + env(safe-area-inset-bottom))">
+    <div class="dialog-title">🏆 Game Over</div>
+    <div id="end-game-winner" style="margin-bottom:14px;font-size:14px;color:var(--text-dim)"></div>
+    <div id="end-game-transfers"></div>
+    <div style="margin-top:20px">
+      <button class="btn-ghost btn-full" onclick="closeEndGame()">Close</button>
+    </div>
+  </div>
+</div>
 <div id="admin-dialog-overlay" class="dialog-overlay">
   <div class="dialog-box">
     <div class="dialog-title">Admin Access</div>
@@ -905,6 +945,10 @@ function showScreen(id) {
     document.getElementById('new-game-name').value = '';
     document.getElementById('player-inputs').innerHTML = '';
     document.getElementById('new-game-error')?.classList.remove('visible');
+    document.getElementById('stake-input').value = '0.25';
+    document.querySelectorAll('#currency-btns .count-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelector('#currency-btns .count-btn[data-currency="USD"]').classList.add('selected');
+    selectedCurrency = { code: 'USD', symbol: '$' };
     loadPlayerSuggestions();
   }
   if (id !== 'screen-game') _stopAutoRefresh();
@@ -1044,6 +1088,13 @@ document.getElementById('dialog-overlay').addEventListener('click', e => { if (e
 
 // ── New Game ──────────────────────────────────────────────────────────────────
 let selectedPlayerCount = 0;
+let selectedCurrency    = { code: 'USD', symbol: '$' };
+
+function setCurrency(btn) {
+  document.querySelectorAll('#currency-btns .count-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedCurrency = { code: btn.dataset.currency, symbol: btn.dataset.symbol };
+}
 function setPlayerCount(n) {
   selectedPlayerCount = n;
   document.querySelectorAll('.count-btn').forEach(b => b.classList.toggle('selected', parseInt(b.dataset.n) === n));
@@ -1126,9 +1177,14 @@ async function createGame() {
     seen.add(v.toLowerCase());
     players.push(v);
   }
+  const stake = parseFloat(document.getElementById('stake-input')?.value || '0') || 0;
   loading(true);
   try {
-    const game = await apiFetch('/games', { method:'POST', body: JSON.stringify({ name, players }) });
+    const game = await apiFetch('/games', { method:'POST', body: JSON.stringify({
+      name, players,
+      stake_per_point: stake,
+      currency: selectedCurrency.code,
+    }) });
     currentGame = game; openGame(game.id);
   } catch(e) { showError('new-game-error', e.message); }
   finally { loading(false); }
@@ -1153,7 +1209,8 @@ async function openGame(gameId) {
     document.getElementById('new-player-name').value = '';
 
     // Show/hide owner-only controls
-    document.getElementById('add-hand-btn').style.display       = isOwner ? '' : 'none';
+    document.getElementById('add-hand-btn').style.display  = isOwner ? '' : 'none';
+    document.getElementById('end-game-btn').style.display   = isOwner ? '' : 'none';
     document.getElementById('add-player-section').style.display = isOwner ? 'block' : 'none';
 
     renderPlayerRoster(game.players, isOwner, board);
@@ -1311,11 +1368,16 @@ function renderCondensedScoreboard(players, board) {
 
   if (!hands.length) { tbody.innerHTML = ''; return; }
 
+  const stake2   = parseFloat(currentGame?.stake_per_point) || 0;
+  const sym2     = ({ USD:'$', NPR:'Rs', EUR:'€', GBP:'£', INR:'₹', CAD:'C$' })[currentGame?.currency] || (currentGame?.currency || '');
   const maxT = Math.max(...players.map(p => totals[p.id] ?? 0));
   const totalCells = players.map(p => {
-    const t = totals[p.id] ?? 0;
+    const t   = totals[p.id] ?? 0;
     const cls = [ptsClass(t), t === maxT && t > 0 ? 'total-best' : ''].filter(Boolean).join(' ');
-    return `<td class="${cls}" style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;text-align:center">${t > 0 ? '+'+t : t}</td>`;
+    const money = stake2 > 0
+      ? `<div style="font-family:'DM Mono',monospace;font-size:10px;opacity:.7;margin-top:1px">${t >= 0 ? sym2 : '-'+sym2}${Math.abs(t * stake2).toFixed(2)}</div>`
+      : '';
+    return `<td class="${cls}" style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;text-align:center">${t > 0 ? '+'+t : t}${money}</td>`;
   }).join('');
 
   const lastHand = hands[hands.length - 1];
@@ -1359,11 +1421,19 @@ function renderScoreboard(players, board) {
   empty.style.display = 'none'; table.style.display = '';
   tfoot.innerHTML = '';
 
+  const stake    = parseFloat(currentGame.stake_per_point) || 0;
+  const currency = currentGame.currency || 'USD';
+  const symMap   = { USD:'$', NPR:'Rs', EUR:'€', GBP:'£', INR:'₹', CAD:'C$' };
+  const sym      = symMap[currency] || currency;
+
   const maxT = Math.max(...players.map(p => totals[p.id] ?? 0));
   const totalCells = players.map(p => {
-    const t = totals[p.id] ?? 0;
+    const t   = totals[p.id] ?? 0;
     const cls = [ptsClass(t), t === maxT && t > 0 ? 'total-best' : ''].filter(Boolean).join(' ');
-    return `<th class="${cls}" style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;padding-bottom:10px;text-align:center">${t > 0 ? '+'+t : t}</th>`;
+    const money = stake > 0
+      ? `<div style="font-family:'DM Mono',monospace;font-size:10px;opacity:.7;margin-top:1px">${t >= 0 ? sym : '-'+sym}${Math.abs(t * stake).toFixed(2)}</div>`
+      : '';
+    return `<th class="${cls}" style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;padding-bottom:10px;text-align:center">${t > 0 ? '+'+t : t}${money}</th>`;
   }).join('');
 
   thead.innerHTML = `
@@ -1546,7 +1616,100 @@ async function finalizeHand() {
   finally { loading(false); }
 }
 
-// ── Share ─────────────────────────────────────────────────────────────────────
+// ── End Game / Settlement ─────────────────────────────────────────────────────
+function _computeSettlements(players, totals, stake) {
+  // Build net balances: positive = owed money, negative = owes money
+  const balances = players.map(p => ({
+    name:    p.name,
+    balance: (totals[p.id] ?? 0) * stake,
+  }));
+
+  // Minimum-transfer greedy algorithm
+  const transfers = [];
+  const debtors   = balances.filter(b => b.balance < -0.001).sort((a,b) => a.balance - b.balance);
+  const creditors = balances.filter(b => b.balance >  0.001).sort((a,b) => b.balance - a.balance);
+  const d = debtors.map(b => ({ ...b }));
+  const c = creditors.map(b => ({ ...b }));
+
+  let di = 0, ci = 0;
+  while (di < d.length && ci < c.length) {
+    const amount = Math.min(-d[di].balance, c[ci].balance);
+    if (amount > 0.001) {
+      transfers.push({ from: d[di].name, to: c[ci].name, amount });
+    }
+    d[di].balance += amount;
+    c[ci].balance -= amount;
+    if (Math.abs(d[di].balance) < 0.001) di++;
+    if (Math.abs(c[ci].balance) < 0.001) ci++;
+  }
+  return transfers;
+}
+
+function showEndGame() {
+  const board = currentGame._lastBoard;
+  if (!board || !board.hands?.length) {
+    alert('No hands have been played yet.');
+    return;
+  }
+
+  const { totals } = board;
+  const players    = currentGame.players;
+  const stake      = parseFloat(currentGame.stake_per_point) || 0;
+  const currency   = currentGame.currency || 'USD';
+  const symMap     = { USD:'$', NPR:'Rs', EUR:'€', GBP:'£', INR:'₹', CAD:'C$' };
+  const sym        = symMap[currency] || currency;
+
+  // Find overall winner (highest total)
+  const winner = players.reduce((best, p) =>
+    (totals[p.id] ?? 0) > (totals[best.id] ?? 0) ? p : best, players[0]);
+
+  document.getElementById('end-game-winner').innerHTML =
+    `🏆 <strong style="color:var(--gold)">${esc(winner.name)}</strong> wins with ${totals[winner.id] > 0 ? '+' : ''}${totals[winner.id] ?? 0} points`;
+
+  const el = document.getElementById('end-game-transfers');
+  if (stake > 0) {
+    const transfers = _computeSettlements(players, totals, stake);
+    if (!transfers.length) {
+      el.innerHTML = `<div class="settlement-zero">Everyone is even — no transfers needed!</div>`;
+    } else {
+      el.innerHTML = `
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-mute);margin-bottom:10px">
+          Money transfers to settle up
+        </div>
+        ${transfers.map(t => `
+          <div class="settlement-card">
+            <span class="settlement-from">${esc(t.from)}</span>
+            <span class="settlement-arrow">pays</span>
+            <span class="settlement-amount">${sym}${t.amount.toFixed(2)}</span>
+            <span class="settlement-arrow">→</span>
+            <span class="settlement-to">${esc(t.to)}</span>
+          </div>`).join('')}`;
+    }
+  } else {
+    // Show just points totals sorted
+    const sorted = [...players].sort((a,b) => (totals[b.id]??0) - (totals[a.id]??0));
+    el.innerHTML = `
+      <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-mute);margin-bottom:10px">Final Standings</div>
+      ${sorted.map((p,i) => {
+        const t = totals[p.id] ?? 0;
+        return `<div class="settlement-card" style="justify-content:space-between">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mute);width:20px">${i+1}</span>
+          <span class="settlement-from" style="color:var(--text)">${esc(p.name)}</span>
+          <span class="settlement-amount" style="font-size:15px" class="${ptsClass(t)}">${t>0?'+':''}${t}</span>
+        </div>`;
+      }).join('')}`;
+  }
+
+  document.getElementById('end-game-overlay').classList.add('visible');
+}
+
+function closeEndGame() {
+  document.getElementById('end-game-overlay').classList.remove('visible');
+}
+
+document.getElementById('end-game-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeEndGame();
+});
 let _currentShareCode = '';
 
 async function showShareDialog() {

@@ -130,11 +130,14 @@ _SCHEMA_PG = [
         created_at TIMESTAMPTZ DEFAULT NOW()
     )""",
     """CREATE TABLE IF NOT EXISTS games (
-        id         SERIAL PRIMARY KEY,
-        user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        name       TEXT NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        is_active  BOOLEAN DEFAULT TRUE
+        id              SERIAL PRIMARY KEY,
+        user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name            TEXT NOT NULL,
+        join_code       TEXT UNIQUE,
+        created_at      TIMESTAMPTZ DEFAULT NOW(),
+        is_active       BOOLEAN DEFAULT TRUE,
+        stake_per_point NUMERIC(10,2) DEFAULT 0.25,
+        currency        TEXT DEFAULT 'USD'
     )""",
     """CREATE TABLE IF NOT EXISTS players (
         id        SERIAL PRIMARY KEY,
@@ -162,6 +165,12 @@ _SCHEMA_PG = [
         is_winner BOOLEAN NOT NULL DEFAULT FALSE,
         UNIQUE(hand_id, player_id)
     )""",
+    """CREATE TABLE IF NOT EXISTS game_members (
+        game_id    INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        joined_at  TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (game_id, user_id)
+    )""",
 ]
 
 _SCHEMA_SQLITE = [
@@ -172,11 +181,14 @@ _SCHEMA_SQLITE = [
         created_at TEXT DEFAULT (datetime('now'))
     )""",
     """CREATE TABLE IF NOT EXISTS games (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        name       TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now')),
-        is_active  INTEGER DEFAULT 1
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name            TEXT NOT NULL,
+        join_code       TEXT UNIQUE,
+        created_at      TEXT DEFAULT (datetime('now')),
+        is_active       INTEGER DEFAULT 1,
+        stake_per_point REAL DEFAULT 0.25,
+        currency        TEXT DEFAULT 'USD'
     )""",
     """CREATE TABLE IF NOT EXISTS players (
         id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -204,6 +216,12 @@ _SCHEMA_SQLITE = [
         is_winner INTEGER NOT NULL DEFAULT 0,
         UNIQUE(hand_id, player_id)
     )""",
+    """CREATE TABLE IF NOT EXISTS game_members (
+        game_id   INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+        user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        joined_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (game_id, user_id)
+    )""",
 ]
 
 _MIGRATIONS_PG = [
@@ -211,6 +229,12 @@ _MIGRATIONS_PG = [
     "ALTER TABLE hands   ADD COLUMN IF NOT EXISTS better_game BOOLEAN DEFAULT FALSE",
     "CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name TEXT NOT NULL UNIQUE, pin_hash TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())",
     "ALTER TABLE games ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE",
+    "ALTER TABLE games ADD COLUMN IF NOT EXISTS join_code TEXT UNIQUE",
+    "CREATE TABLE IF NOT EXISTS game_members (game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, joined_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (game_id, user_id))",
+    "ALTER TABLE games ADD COLUMN IF NOT EXISTS stake_per_point NUMERIC(10,2) DEFAULT 0.25",
+    "ALTER TABLE games ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD'",
+    "UPDATE games SET stake_per_point = 0.25 WHERE stake_per_point IS NULL",
+    "UPDATE games SET currency = 'USD' WHERE currency IS NULL",
 ]
 
 _MIGRATIONS_SQLITE = [
@@ -218,6 +242,12 @@ _MIGRATIONS_SQLITE = [
     "ALTER TABLE hands   ADD COLUMN better_game INTEGER DEFAULT 0",
     "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, pin_hash TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')))",
     "ALTER TABLE games ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE",
+    "ALTER TABLE games ADD COLUMN join_code TEXT UNIQUE",
+    "CREATE TABLE IF NOT EXISTS game_members (game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, joined_at TEXT DEFAULT (datetime('now')), PRIMARY KEY (game_id, user_id))",
+    "ALTER TABLE games ADD COLUMN stake_per_point REAL DEFAULT 0.25",
+    "ALTER TABLE games ADD COLUMN currency TEXT DEFAULT 'USD'",
+    "UPDATE games SET stake_per_point = 0.25 WHERE stake_per_point IS NULL",
+    "UPDATE games SET currency = 'USD' WHERE currency IS NULL",
 ]
 
 

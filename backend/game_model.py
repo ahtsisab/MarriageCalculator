@@ -37,7 +37,8 @@ def _unique_join_code(cur) -> str:
 
 # ── Game CRUD ─────────────────────────────────────────────────────────────────
 
-def create_game(name: str, player_names: list[str], user_id: int | None = None) -> dict:
+def create_game(name: str, player_names: list[str], user_id: int | None = None,
+                stake_per_point: float = 0.25, currency: str = "USD") -> dict:
     if not 3 <= len(player_names) <= 6:
         raise ValueError("A game must start with between 3 and 6 players.")
     seen = set()
@@ -52,9 +53,9 @@ def create_game(name: str, player_names: list[str], user_id: int | None = None) 
 
     game = insert_returning(
         cur, conn,
-        sql_pg="INSERT INTO games (name, user_id) VALUES (%s, %s) RETURNING id, name, created_at, user_id, join_code",
-        sql_sqlite="INSERT INTO games (name, user_id) VALUES (%s, %s)",
-        params=(name, user_id),
+        sql_pg="INSERT INTO games (name, user_id, stake_per_point, currency) VALUES (%s, %s, %s, %s) RETURNING id, name, created_at, user_id, join_code, stake_per_point, currency",
+        sql_sqlite="INSERT INTO games (name, user_id, stake_per_point, currency) VALUES (%s, %s, %s, %s)",
+        params=(name, user_id, stake_per_point, currency),
     )
     game["players"]  = []
     game["is_owner"] = True
@@ -127,7 +128,7 @@ def get_game(game_id: int) -> dict | None:
     cur  = conn.cursor()
 
     cur.execute(
-        "SELECT id, name, created_at, is_active, user_id, join_code FROM games WHERE id = %s",
+        "SELECT id, name, created_at, is_active, user_id, join_code, stake_per_point, currency FROM games WHERE id = %s",
         (game_id,),
     )
     row = cur.fetchone()

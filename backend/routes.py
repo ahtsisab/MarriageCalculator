@@ -152,12 +152,16 @@ def route_create_game():
     data    = request.get_json(force=True)
     name    = (data.get("name") or "").strip()
     players = data.get("players", [])
+    stake   = float(data.get("stake_per_point", 0.25))
+    currency = (data.get("currency") or "USD").strip()
     if not name:
         return _err("Game name is required.")
     if not isinstance(players, list) or not all(isinstance(p, str) for p in players):
         return _err("players must be a list of strings.")
+    if stake < 0:
+        return _err("stake_per_point must be non-negative.")
     try:
-        game = create_game(name, players, user_id=_uid())
+        game = create_game(name, players, user_id=_uid(), stake_per_point=stake, currency=currency)
     except ValueError as exc:
         return _err(str(exc))
     return jsonify(game), 201
