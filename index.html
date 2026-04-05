@@ -677,16 +677,25 @@ body::before { display: none; }
       <div class="field">
         <label>Stake per Point</label>
         <div style="display:flex;gap:8px;align-items:center">
-          <div style="display:flex;gap:4px;flex-wrap:wrap" id="currency-btns">
-            <button class="count-btn selected" data-currency="USD" data-symbol="$" onclick="setCurrency(this)">$ USD</button>
-            <button class="count-btn" data-currency="NPR" data-symbol="Rs" onclick="setCurrency(this)">Rs NPR</button>
-            <button class="count-btn" data-currency="EUR" data-symbol="€" onclick="setCurrency(this)">€ EUR</button>
-            <button class="count-btn" data-currency="GBP" data-symbol="£" onclick="setCurrency(this)">£ GBP</button>
-            <button class="count-btn" data-currency="INR" data-symbol="₹" onclick="setCurrency(this)">₹ INR</button>
-            <button class="count-btn" data-currency="CAD" data-symbol="C$" onclick="setCurrency(this)">C$ CAD</button>
-          </div>
+          <select id="currency-select" onchange="setCurrency(this)"
+            style="flex:1;font-family:'DM Mono',monospace;font-size:13px;padding:10px 12px;
+                   background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+                   color:var(--text);-webkit-appearance:none;appearance:none;
+                   background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%238a7d60' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\");
+                   background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer">
+            <option value="USD" data-symbol="$">$ USD — US Dollar</option>
+            <option value="NPR" data-symbol="Rs">Rs NPR — Nepali Rupee</option>
+            <option value="EUR" data-symbol="€">€ EUR — Euro</option>
+            <option value="GBP" data-symbol="£">£ GBP — British Pound</option>
+            <option value="INR" data-symbol="₹">₹ INR — Indian Rupee</option>
+            <option value="CAD" data-symbol="C$">C$ CAD — Canadian Dollar</option>
+            <option value="AUD" data-symbol="A$">A$ AUD — Australian Dollar</option>
+            <option value="JPY" data-symbol="¥">¥ JPY — Japanese Yen</option>
+            <option value="CHF" data-symbol="Fr">Fr CHF — Swiss Franc</option>
+            <option value="SGD" data-symbol="S$">S$ SGD — Singapore Dollar</option>
+          </select>
           <input type="number" id="stake-input" value="0.25" min="0" step="0.01"
-            style="width:80px;font-family:'DM Mono',monospace;font-size:15px;padding:8px 10px;text-align:right"
+            style="width:90px;font-family:'DM Mono',monospace;font-size:15px;padding:10px 10px;text-align:right"
             inputmode="decimal">
         </div>
       </div>
@@ -946,8 +955,8 @@ function showScreen(id) {
     document.getElementById('player-inputs').innerHTML = '';
     document.getElementById('new-game-error')?.classList.remove('visible');
     document.getElementById('stake-input').value = '0.25';
-    document.querySelectorAll('#currency-btns .count-btn').forEach(b => b.classList.remove('selected'));
-    document.querySelector('#currency-btns .count-btn[data-currency="USD"]').classList.add('selected');
+    const sel = document.getElementById('currency-select');
+    if (sel) { sel.value = 'USD'; }
     selectedCurrency = { code: 'USD', symbol: '$' };
     loadPlayerSuggestions();
   }
@@ -1090,10 +1099,9 @@ document.getElementById('dialog-overlay').addEventListener('click', e => { if (e
 let selectedPlayerCount = 0;
 let selectedCurrency    = { code: 'USD', symbol: '$' };
 
-function setCurrency(btn) {
-  document.querySelectorAll('#currency-btns .count-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-  selectedCurrency = { code: btn.dataset.currency, symbol: btn.dataset.symbol };
+function setCurrency(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  selectedCurrency = { code: sel.value, symbol: opt.dataset.symbol || sel.value };
 }
 function setPlayerCount(n) {
   selectedPlayerCount = n;
