@@ -718,7 +718,9 @@ body::before { display: none; }
               </select>
               <input type="number" id="stake-input" value="0.25" min="0" step="0.01"
                 style="width:80px;font-family:'DM Mono',monospace;font-size:14px;padding:10px 8px;text-align:right"
-                inputmode="decimal">
+                inputmode="decimal"
+                onfocus="if(this.value==this.defaultValue)this.value=''"
+                onblur="if(this.value==='')this.value=this.defaultValue">
             </div>
           </div>
 
@@ -727,12 +729,16 @@ body::before { display: none; }
             <div class="field" style="flex:1;margin-bottom:0">
               <label>Seen Penalty</label>
               <input type="number" id="penalty-seen-input" value="3" min="0" max="99" inputmode="numeric"
-                style="font-family:'DM Mono',monospace;font-size:15px;text-align:center;padding:10px 8px">
+                style="font-family:'DM Mono',monospace;font-size:15px;text-align:center;padding:10px 8px"
+                onfocus="if(this.value==this.defaultValue)this.value=''"
+                onblur="if(this.value==='')this.value=this.defaultValue">
             </div>
             <div class="field" style="flex:1;margin-bottom:0">
               <label>Unseen Penalty</label>
               <input type="number" id="penalty-unseen-input" value="10" min="0" max="99" inputmode="numeric"
-                style="font-family:'DM Mono',monospace;font-size:15px;text-align:center;padding:10px 8px">
+                style="font-family:'DM Mono',monospace;font-size:15px;text-align:center;padding:10px 8px"
+                onfocus="if(this.value==this.defaultValue)this.value=''"
+                onblur="if(this.value==='')this.value=this.defaultValue">
             </div>
           </div>
 
