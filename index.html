@@ -414,6 +414,7 @@ label {
 .pts-pos { color: var(--green-lt); } .pts-neg { color: var(--red-lt); } .pts-zero { color: var(--text-dim); }
 .total-best { color: var(--gold) !important; }
 .winner-icon { font-size: 11px; }
+.unseen-icon { font-size: 11px; opacity: .7; }
 .better-badge { font-family: 'DM Mono', monospace; font-size: 9px; background: rgba(201,168,76,.15); border: 1px solid var(--gold-dim); color: var(--gold); border-radius: 3px; padding: 1px 4px; margin-left: 3px; vertical-align: middle; }
 .hand-expand-row { background: var(--surface2); display: none; }
 .hand-expand-row.open { display: table-row; }
@@ -678,60 +679,76 @@ body::before { display: none; }
     <div class="breadcrumb"><a onclick="showScreen('screen-home')">Home</a> › New Game</div>
     <h2><span class="suit">♣</span> New Game</h2>
     <div class="card">
-      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px">
-        <div class="field" style="flex:1;margin-bottom:0">
-          <label>Game Name</label>
-          <input type="text" id="new-game-name" placeholder="e.g. Friday Night…" autocomplete="off">
+
+      <!-- Game name -->
+      <div class="field">
+        <label>Game Name</label>
+        <input type="text" id="new-game-name" placeholder="e.g. Friday Night, Dashain 2081…" autocomplete="off">
+      </div>
+
+      <!-- Game Options (collapsible) -->
+      <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px">
+        <div onclick="toggleGameOptions()"
+             style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;background:var(--surface2);user-select:none">
+          <span style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim)">Game Options</span>
+          <span id="game-options-chevron" style="font-size:12px;color:var(--text-mute);transition:transform .2s">▸</span>
         </div>
-        <div class="field" style="margin-bottom:0">
-          <label>Stake / pt</label>
-          <div style="display:flex;gap:6px;align-items:center">
-            <select id="currency-select" onchange="setCurrency(this)"
-              style="font-family:'DM Mono',monospace;font-size:12px;padding:10px 28px 10px 10px;
-                     background:var(--surface2);border:1px solid var(--border);border-radius:8px;
-                     color:var(--text);-webkit-appearance:none;appearance:none;
-                     background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%238a7d60' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\");
-                     background-repeat:no-repeat;background-position:right 8px center;cursor:pointer;width:100px">
-              <option value="USD" data-symbol="$">$ USD</option>
-              <option value="NPR" data-symbol="Rs">Rs NPR</option>
-              <option value="EUR" data-symbol="€">€ EUR</option>
-              <option value="GBP" data-symbol="£">£ GBP</option>
-              <option value="INR" data-symbol="₹">₹ INR</option>
-              <option value="CAD" data-symbol="C$">C$ CAD</option>
-              <option value="AUD" data-symbol="A$">A$ AUD</option>
-              <option value="JPY" data-symbol="¥">¥ JPY</option>
-              <option value="CHF" data-symbol="Fr">Fr CHF</option>
-              <option value="SGD" data-symbol="S$">S$ SGD</option>
-            </select>
-            <input type="number" id="stake-input" value="0.25" min="0" step="0.01"
-              style="width:70px;font-family:'DM Mono',monospace;font-size:14px;padding:10px 8px;text-align:right"
-              inputmode="decimal">
+        <div id="game-options-body" style="display:none;padding:14px;border-top:1px solid var(--border)">
+
+          <!-- Stake -->
+          <div class="field" style="margin-bottom:12px">
+            <label>Stake per Point</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="currency-select" onchange="setCurrency(this)"
+                style="flex:1;font-family:'DM Mono',monospace;font-size:12px;padding:10px 28px 10px 10px;
+                       background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+                       color:var(--text);-webkit-appearance:none;appearance:none;
+                       background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%238a7d60' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\");
+                       background-repeat:no-repeat;background-position:right 8px center;cursor:pointer">
+                <option value="USD" data-symbol="$">$ USD — US Dollar</option>
+                <option value="NPR" data-symbol="Rs">Rs NPR — Nepali Rupee</option>
+                <option value="EUR" data-symbol="€">€ EUR — Euro</option>
+                <option value="GBP" data-symbol="£">£ GBP — British Pound</option>
+                <option value="INR" data-symbol="₹">₹ INR — Indian Rupee</option>
+                <option value="CAD" data-symbol="C$">C$ CAD — Canadian Dollar</option>
+                <option value="AUD" data-symbol="A$">A$ AUD — Australian Dollar</option>
+                <option value="JPY" data-symbol="¥">¥ JPY — Japanese Yen</option>
+                <option value="CHF" data-symbol="Fr">Fr CHF — Swiss Franc</option>
+                <option value="SGD" data-symbol="S$">S$ SGD — Singapore Dollar</option>
+              </select>
+              <input type="number" id="stake-input" value="0.25" min="0" step="0.01"
+                style="width:80px;font-family:'DM Mono',monospace;font-size:14px;padding:10px 8px;text-align:right"
+                inputmode="decimal">
+            </div>
           </div>
-        </div>
-      </div>
-      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap">
-        <div class="field" style="margin-bottom:0;flex:1;min-width:120px">
-          <label>Seen Penalty</label>
-          <input type="number" id="penalty-seen-input" value="3" min="0" max="99" inputmode="numeric"
-            style="font-family:'DM Mono',monospace;font-size:15px;text-align:center;padding:10px 8px">
-        </div>
-        <div class="field" style="margin-bottom:0;flex:1;min-width:120px">
-          <label>Unseen Penalty</label>
-          <input type="number" id="penalty-unseen-input" value="10" min="0" max="99" inputmode="numeric"
-            style="font-family:'DM Mono',monospace;font-size:15px;text-align:center;padding:10px 8px">
-        </div>
-        <div class="field" style="margin-bottom:0">
-          <label>Better Game</label>
-          <div style="padding:10px 0;display:flex;align-items:center;gap:8px">
-            <button id="allow-better-game-switch" class="chip-switch" onclick="toggleAllowBetterGame()" title="Allow Better Game"></button>
-            <span id="allow-better-game-label" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mute);text-transform:uppercase;letter-spacing:1px">Off</span>
+
+          <!-- Penalties -->
+          <div style="display:flex;gap:10px;margin-bottom:12px">
+            <div class="field" style="flex:1;margin-bottom:0">
+              <label>Seen Penalty</label>
+              <input type="number" id="penalty-seen-input" value="3" min="0" max="99" inputmode="numeric"
+                style="font-family:'DM Mono',monospace;font-size:15px;text-align:center;padding:10px 8px">
+            </div>
+            <div class="field" style="flex:1;margin-bottom:0">
+              <label>Unseen Penalty</label>
+              <input type="number" id="penalty-unseen-input" value="10" min="0" max="99" inputmode="numeric"
+                style="font-family:'DM Mono',monospace;font-size:15px;text-align:center;padding:10px 8px">
+            </div>
           </div>
+
+          <!-- Better Game -->
+          <div class="field" style="margin-bottom:0;display:flex;align-items:center;justify-content:space-between">
+            <label style="margin:0">Allow Better Game</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="allow-better-game-label" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mute);text-transform:uppercase;letter-spacing:1px">Off</span>
+              <button id="allow-better-game-switch" class="chip-switch" onclick="toggleAllowBetterGame()" title="Allow Better Game"></button>
+            </div>
+          </div>
+
         </div>
       </div>
-      <div id="suggestion-pills" style="display:none;margin-bottom:14px">
-        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-mute);margin-bottom:8px">Previous players — tap to add</div>
-        <div id="suggestion-pill-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-      </div>
+
+      <!-- Number of players -->
       <div class="field">
         <label>Number of Players</label>
         <div class="player-count-row">
@@ -741,10 +758,7 @@ body::before { display: none; }
           <button class="count-btn" data-n="6" onclick="setPlayerCount(6)">6</button>
         </div>
       </div>
-      <div class="field" id="player-names-section" style="display:none">
-        <label>Player Names</label>
-        <div class="player-inputs" id="player-inputs"></div>
-      </div>
+
       <div id="new-game-error" class="error-msg"></div>
       <div class="section-actions">
         <button class="btn-primary" onclick="createGame()">Create Game</button>
@@ -1000,6 +1014,11 @@ function showScreen(id) {
     const bgLabel  = document.getElementById('allow-better-game-label');
     if (bgSwitch) bgSwitch.classList.remove('on');
     if (bgLabel)  bgLabel.textContent = 'Off';
+    // Collapse game options panel
+    const optBody    = document.getElementById('game-options-body');
+    const optChevron = document.getElementById('game-options-chevron');
+    if (optBody)    optBody.style.display = 'none';
+    if (optChevron) optChevron.style.transform = '';
     loadPlayerSuggestions();
   }
   if (id !== 'screen-game') _stopAutoRefresh();
@@ -1154,7 +1173,13 @@ let selectedPlayerCount = 0;
 let selectedCurrency    = { code: 'USD', symbol: '$' };
 let _allowBetterGame    = false;
 
-function setCurrency(sel) {
+function toggleGameOptions() {
+  const body    = document.getElementById('game-options-body');
+  const chevron = document.getElementById('game-options-chevron');
+  const open = body.style.display === 'none';
+  body.style.display    = open ? '' : 'none';
+  chevron.style.transform = open ? 'rotate(90deg)' : '';
+}
   const opt = sel.options[sel.selectedIndex];
   selectedCurrency = { code: sel.value, symbol: opt.dataset.symbol || sel.value };
 }
@@ -1544,7 +1569,7 @@ function renderScoreboard(players, board) {
     const bb = h.better_game ? `<span class="better-badge">2×</span>` : '';
     const cells = players.map(p => {
       const e = byPlayer[p.id]; if (!e) return `<td style="color:var(--text-mute)">—</td>`;
-      const icon = e.is_winner ? ` <span class="winner-icon">👑</span>` : '';
+      const icon = e.is_winner ? ` <span class="winner-icon">👑</span>` : e.status === 'unseen' ? ` <span class="unseen-icon">🙈</span>` : '';
       return `<td class="${ptsClass(e.points)}">${e.points > 0 ? '+'+e.points : e.points}${icon}</td>`;
     }).join('');
     return `
@@ -1567,7 +1592,7 @@ function renderHandDetail(hand, players, isLast) {
     if (!e) return `<div class="hand-detail-card" style="opacity:.3"><div class="hd-name">${esc(p.name)}</div><div class="hd-row"><span>Not in hand</span></div></div>`;
     const pts = e.points;
     return `<div class="hand-detail-card">
-      <div class="hd-name">${esc(p.name)} ${e.is_winner ? '👑' : ''}</div>
+      <div class="hd-name">${esc(p.name)} ${e.is_winner ? '👑' : e.status === 'unseen' ? '🙈' : ''}</div>
       <div class="hd-row"><span>Status</span><span>${e.status.charAt(0).toUpperCase()+e.status.slice(1)}</span></div>
       <div class="hd-row"><span>Maal</span><span>${e.maal}</span></div>
       <div class="hd-row"><span>Pts</span><span class="${ptsClass(pts)}">${pts > 0 ? '+'+pts : pts}</span></div>
