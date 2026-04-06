@@ -59,6 +59,9 @@ def change_pin(user_id: int, current_pin: str, new_pin: str) -> None:
     )
     conn.commit()
     cur.close(); conn.close()
+
+
+def login(name: str, pin: str) -> dict:
     """Verify name+PIN. Returns user dict or raises ValueError."""
     conn = get_connection()
     cur  = conn.cursor()
