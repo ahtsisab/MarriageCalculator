@@ -4,10 +4,8 @@ Hand-level operations: finalize a hand, compute points, retrieve history.
 
 from database import get_connection, insert_returning
 
-STATUS_PENALTY = {"seen": 3, "unseen": 10, "duplee": 0}
-
-
-def compute_points(entries: list[dict], better_game: bool = False) -> list[dict]:
+def compute_points(entries: list[dict], better_game: bool = False,
+                   penalty_seen: int = 3, penalty_unseen: int = 10) -> list[dict]:
     """
     Compute points for all entries. Only active players are included.
 
@@ -41,7 +39,8 @@ def compute_points(entries: list[dict], better_game: bool = False) -> list[dict]
     for e in entries:
         if e["is_winner"]:
             continue
-        pts = -1 * (total_maal + STATUS_PENALTY[e["status"]] - e["maal"] * n)
+        status_penalty = {"seen": penalty_seen, "unseen": penalty_unseen, "duplee": 0}
+        pts = -1 * (total_maal + status_penalty[e["status"]] - e["maal"] * n)
         e["points"] = pts
         non_winner_total += pts
 
@@ -76,15 +75,18 @@ def _fetch_hand_entries(cur, hand_id: int) -> list[dict]:
     return entries
 
 
-def finalize_hand(game_id: int, raw_entries: list[dict], better_game: bool = False) -> dict:
+def finalize_hand(game_id: int, raw_entries: list[dict], better_game: bool = False,
+                  penalty_seen: int = 3, penalty_unseen: int = 10) -> dict:
     """
     Validate, compute points, and persist a new hand.
     Only entries for active players should be passed in.
 
     raw_entries: list of dicts: player_id, status, maal, is_winner
     better_game: if True, all points are doubled
+    penalty_seen / penalty_unseen: per-game configurable penalties
     """
-    entries = compute_points(raw_entries, better_game=better_game)
+    entries = compute_points(raw_entries, better_game=better_game,
+                             penalty_seen=penalty_seen, penalty_unseen=penalty_unseen)
 
     conn = get_connection()
     cur = conn.cursor()

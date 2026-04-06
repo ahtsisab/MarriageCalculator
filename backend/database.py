@@ -136,8 +136,11 @@ _SCHEMA_PG = [
         join_code       TEXT UNIQUE,
         created_at      TIMESTAMPTZ DEFAULT NOW(),
         is_active       BOOLEAN DEFAULT TRUE,
-        stake_per_point NUMERIC(10,2) DEFAULT 0.25,
-        currency        TEXT DEFAULT 'USD'
+        stake_per_point    NUMERIC(10,2) DEFAULT 0.25,
+        currency           TEXT DEFAULT 'USD',
+        allow_better_game  BOOLEAN DEFAULT FALSE,
+        penalty_seen       INTEGER DEFAULT 3,
+        penalty_unseen     INTEGER DEFAULT 10
     )""",
     """CREATE TABLE IF NOT EXISTS players (
         id        SERIAL PRIMARY KEY,
@@ -187,8 +190,11 @@ _SCHEMA_SQLITE = [
         join_code       TEXT UNIQUE,
         created_at      TEXT DEFAULT (datetime('now')),
         is_active       INTEGER DEFAULT 1,
-        stake_per_point REAL DEFAULT 0.25,
-        currency        TEXT DEFAULT 'USD'
+        stake_per_point    REAL DEFAULT 0.25,
+        currency           TEXT DEFAULT 'USD',
+        allow_better_game  INTEGER DEFAULT 0,
+        penalty_seen       INTEGER DEFAULT 3,
+        penalty_unseen     INTEGER DEFAULT 10
     )""",
     """CREATE TABLE IF NOT EXISTS players (
         id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -235,7 +241,15 @@ _MIGRATIONS_PG = [
     "ALTER TABLE games ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD'",
     "UPDATE games SET stake_per_point = 0.25 WHERE stake_per_point IS NULL",
     "UPDATE games SET currency = 'USD' WHERE currency IS NULL",
+    "ALTER TABLE games ADD COLUMN IF NOT EXISTS allow_better_game BOOLEAN DEFAULT FALSE",
+    "ALTER TABLE games ADD COLUMN IF NOT EXISTS penalty_seen INTEGER DEFAULT 3",
+    "ALTER TABLE games ADD COLUMN IF NOT EXISTS penalty_unseen INTEGER DEFAULT 10",
+    "UPDATE games SET allow_better_game = FALSE WHERE allow_better_game IS NULL",
+    "UPDATE games SET penalty_seen = 3 WHERE penalty_seen IS NULL",
+    "UPDATE games SET penalty_unseen = 10 WHERE penalty_unseen IS NULL",
 ]
+
+_MIGRATIONS_SQLITE = [
 
 _MIGRATIONS_SQLITE = [
     "ALTER TABLE players ADD COLUMN is_active INTEGER DEFAULT 1",
@@ -248,7 +262,15 @@ _MIGRATIONS_SQLITE = [
     "ALTER TABLE games ADD COLUMN currency TEXT DEFAULT 'USD'",
     "UPDATE games SET stake_per_point = 0.25 WHERE stake_per_point IS NULL",
     "UPDATE games SET currency = 'USD' WHERE currency IS NULL",
+    "ALTER TABLE games ADD COLUMN IF NOT EXISTS allow_better_game BOOLEAN DEFAULT FALSE",
+    "ALTER TABLE games ADD COLUMN IF NOT EXISTS penalty_seen INTEGER DEFAULT 3",
+    "ALTER TABLE games ADD COLUMN IF NOT EXISTS penalty_unseen INTEGER DEFAULT 10",
+    "UPDATE games SET allow_better_game = FALSE WHERE allow_better_game IS NULL",
+    "UPDATE games SET penalty_seen = 3 WHERE penalty_seen IS NULL",
+    "UPDATE games SET penalty_unseen = 10 WHERE penalty_unseen IS NULL",
 ]
+
+_MIGRATIONS_SQLITE = [
 
 
 def _run_migrations(cur, conn):

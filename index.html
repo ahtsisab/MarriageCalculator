@@ -709,6 +709,25 @@ body::before { display: none; }
           </div>
         </div>
       </div>
+      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap">
+        <div class="field" style="margin-bottom:0;flex:1;min-width:120px">
+          <label>Seen Penalty</label>
+          <input type="number" id="penalty-seen-input" value="3" min="0" max="99" inputmode="numeric"
+            style="font-family:'DM Mono',monospace;font-size:15px;text-align:center;padding:10px 8px">
+        </div>
+        <div class="field" style="margin-bottom:0;flex:1;min-width:120px">
+          <label>Unseen Penalty</label>
+          <input type="number" id="penalty-unseen-input" value="10" min="0" max="99" inputmode="numeric"
+            style="font-family:'DM Mono',monospace;font-size:15px;text-align:center;padding:10px 8px">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>Better Game</label>
+          <div style="padding:10px 0;display:flex;align-items:center;gap:8px">
+            <button id="allow-better-game-switch" class="chip-switch" onclick="toggleAllowBetterGame()" title="Allow Better Game"></button>
+            <span id="allow-better-game-label" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mute);text-transform:uppercase;letter-spacing:1px">Off</span>
+          </div>
+        </div>
+      </div>
       <div id="suggestion-pills" style="display:none;margin-bottom:14px">
         <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-mute);margin-bottom:8px">Previous players — tap to add</div>
         <div id="suggestion-pill-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
@@ -971,9 +990,16 @@ function showScreen(id) {
     document.getElementById('player-inputs').innerHTML = '';
     document.getElementById('new-game-error')?.classList.remove('visible');
     document.getElementById('stake-input').value = '0.25';
+    document.getElementById('penalty-seen-input').value = '3';
+    document.getElementById('penalty-unseen-input').value = '10';
     const sel = document.getElementById('currency-select');
     if (sel) { sel.value = 'USD'; }
     selectedCurrency = { code: 'USD', symbol: '$' };
+    _allowBetterGame = false;
+    const bgSwitch = document.getElementById('allow-better-game-switch');
+    const bgLabel  = document.getElementById('allow-better-game-label');
+    if (bgSwitch) bgSwitch.classList.remove('on');
+    if (bgLabel)  bgLabel.textContent = 'Off';
     loadPlayerSuggestions();
   }
   if (id !== 'screen-game') _stopAutoRefresh();
@@ -1126,10 +1152,19 @@ document.getElementById('dialog-overlay').addEventListener('click', e => { if (e
 // ── New Game ──────────────────────────────────────────────────────────────────
 let selectedPlayerCount = 0;
 let selectedCurrency    = { code: 'USD', symbol: '$' };
+let _allowBetterGame    = false;
 
 function setCurrency(sel) {
   const opt = sel.options[sel.selectedIndex];
   selectedCurrency = { code: sel.value, symbol: opt.dataset.symbol || sel.value };
+}
+
+function toggleAllowBetterGame() {
+  _allowBetterGame = !_allowBetterGame;
+  const btn = document.getElementById('allow-better-game-switch');
+  const lbl = document.getElementById('allow-better-game-label');
+  if (btn) btn.classList.toggle('on', _allowBetterGame);
+  if (lbl) lbl.textContent = _allowBetterGame ? 'On' : 'Off';
 }
 function setPlayerCount(n) {
   selectedPlayerCount = n;
@@ -1213,13 +1248,18 @@ async function createGame() {
     seen.add(v.toLowerCase());
     players.push(v);
   }
-  const stake = parseFloat(document.getElementById('stake-input')?.value || '0') || 0;
+  const stake          = parseFloat(document.getElementById('stake-input')?.value || '0') || 0;
+  const penaltySeen    = parseInt(document.getElementById('penalty-seen-input')?.value || '3', 10) || 3;
+  const penaltyUnseen  = parseInt(document.getElementById('penalty-unseen-input')?.value || '10', 10) || 10;
   loading(true);
   try {
     const game = await apiFetch('/games', { method:'POST', body: JSON.stringify({
       name, players,
-      stake_per_point: stake,
-      currency: selectedCurrency.code,
+      stake_per_point:    stake,
+      currency:           selectedCurrency.code,
+      allow_better_game:  _allowBetterGame,
+      penalty_seen:       penaltySeen,
+      penalty_unseen:     penaltyUnseen,
     }) });
     currentGame = game; openGame(game.id);
   } catch(e) { showError('new-game-error', e.message); }
@@ -1547,6 +1587,9 @@ function showAddHand() {
   _editingHandId = null;
   handEntries = active.map(p => ({ player_id: p.id, name: p.name, status: 'unseen', maal: null, is_winner: false }));
   isBetterGame = false; renderBetterGameToggle(); renderHandEntries();
+  // Show/hide Better Game toggle based on game setting
+  document.getElementById('better-game-toggle').style.display =
+    currentGame?.allow_better_game ? '' : 'none';
   document.querySelector('#screen-add-hand h2').innerHTML = `<span class="suit">♦</span> Add Hand`;
   document.getElementById('add-hand-error').classList.remove('visible');
   document.getElementById('add-hand-success').classList.remove('visible');
@@ -1633,6 +1676,10 @@ function editLastHand(handId) {
   isBetterGame = hand.better_game;
   renderBetterGameToggle();
   renderHandEntries();
+
+  // Show/hide Better Game toggle based on game setting
+  document.getElementById('better-game-toggle').style.display =
+    currentGame?.allow_better_game ? '' : 'none';
 
   // Update screen title to indicate edit mode
   document.querySelector('#screen-add-hand h2').innerHTML =

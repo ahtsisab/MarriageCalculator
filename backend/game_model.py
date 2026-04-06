@@ -38,7 +38,9 @@ def _unique_join_code(cur) -> str:
 # ── Game CRUD ─────────────────────────────────────────────────────────────────
 
 def create_game(name: str, player_names: list[str], user_id: int | None = None,
-                stake_per_point: float = 0.25, currency: str = "USD") -> dict:
+                stake_per_point: float = 0.25, currency: str = "USD",
+                allow_better_game: bool = False, penalty_seen: int = 3,
+                penalty_unseen: int = 10) -> dict:
     if not 3 <= len(player_names) <= 6:
         raise ValueError("A game must start with between 3 and 6 players.")
     seen = set()
@@ -53,9 +55,9 @@ def create_game(name: str, player_names: list[str], user_id: int | None = None,
 
     game = insert_returning(
         cur, conn,
-        sql_pg="INSERT INTO games (name, user_id, stake_per_point, currency) VALUES (%s, %s, %s, %s) RETURNING id, name, created_at, user_id, join_code, stake_per_point, currency",
-        sql_sqlite="INSERT INTO games (name, user_id, stake_per_point, currency) VALUES (%s, %s, %s, %s)",
-        params=(name, user_id, stake_per_point, currency),
+        sql_pg="INSERT INTO games (name, user_id, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, name, created_at, user_id, join_code, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen",
+        sql_sqlite="INSERT INTO games (name, user_id, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+        params=(name, user_id, stake_per_point, currency, _bool_val(allow_better_game), penalty_seen, penalty_unseen),
     )
     game["players"]  = []
     game["is_owner"] = True
@@ -137,7 +139,7 @@ def get_game(game_id: int) -> dict | None:
     cur  = conn.cursor()
 
     cur.execute(
-        "SELECT id, name, created_at, is_active, user_id, join_code, stake_per_point, currency FROM games WHERE id = %s",
+        "SELECT id, name, created_at, is_active, user_id, join_code, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen FROM games WHERE id = %s",
         (game_id,),
     )
     row = cur.fetchone()
@@ -146,7 +148,10 @@ def get_game(game_id: int) -> dict | None:
         return None
 
     game = dict(row)
-    game["is_active"] = bool(game["is_active"])
+    game["is_active"]        = bool(game["is_active"])
+    game["allow_better_game"] = bool(game.get("allow_better_game", False))
+    game["penalty_seen"]      = int(game.get("penalty_seen", 3))
+    game["penalty_unseen"]    = int(game.get("penalty_unseen", 10))
 
     cur.execute(
         "SELECT id, name, position, is_active FROM players WHERE game_id = %s ORDER BY position",
