@@ -785,6 +785,14 @@ body::before { display: none; }
         </div>
       </div>
     </div>
+    <!-- Settlement panel — shown permanently when game is ended -->
+    <div id="settlement-panel" style="display:none;margin-top:12px">
+      <div class="card" data-suit="♥">
+        <h3 style="margin:0 0 14px">🏆 Final Settlement</h3>
+        <div id="settlement-winner" style="margin-bottom:12px;font-size:14px;color:var(--text-dim)"></div>
+        <div id="settlement-transfers"></div>
+      </div>
+    </div>
   </div>
 
   <!-- ADD HAND -->
@@ -825,14 +833,14 @@ body::before { display: none; }
   </div>
 </div>
 
-<!-- End Game / Settlement dialog -->
-<div id="end-game-overlay" class="dialog-overlay" style="align-items:center">
-  <div class="dialog-box" style="border-radius:12px;max-height:85vh;overflow-y:auto;padding-bottom:calc(24px + env(safe-area-inset-bottom))">
-    <div class="dialog-title">🏆 Game Over</div>
-    <div id="end-game-winner" style="margin-bottom:14px;font-size:14px;color:var(--text-dim)"></div>
-    <div id="end-game-transfers"></div>
-    <div style="margin-top:20px">
-      <button class="btn-ghost btn-full" onclick="closeEndGame()">Close</button>
+<!-- End Game confirmation dialog -->
+<div id="end-game-confirm-overlay" class="dialog-overlay">
+  <div class="dialog-box">
+    <div class="dialog-title">End Game?</div>
+    <div class="dialog-msg">No more hands can be added after ending the game. The settlement summary will be shown permanently below the scoreboard.</div>
+    <div class="dialog-actions" style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn-ghost" style="flex:1" onclick="closeEndGameConfirm()">Cancel</button>
+      <button class="btn-primary" style="flex:1;background:var(--red);border-color:var(--red)" onclick="confirmEndGame()">End Game</button>
     </div>
   </div>
 </div>
@@ -1057,9 +1065,10 @@ async function loadGameList() {
     }
     list.innerHTML = games.map(g => {
       const sharedBadge = g.is_owner ? '' : `<span class="shared-badge">joined</span>`;
-      const deleteBtn   = g.is_owner
+      const endedBadge  = !g.is_active ? `<span style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--red-lt);border:1px solid rgba(192,57,43,.3);border-radius:4px;padding:2px 6px">ended</span>` : '';
+      const actionBtn   = g.is_owner
         ? `<button class="game-item-delete" title="Delete" onclick="event.stopPropagation(); promptDelete(${g.id}, '${esc(g.name)}')">🗑</button>`
-        : '';
+        : `<button class="game-item-delete" title="Leave game" onclick="event.stopPropagation(); promptLeave(${g.id}, '${esc(g.name)}')" style="font-size:12px">✕ Leave</button>`;
       return `
         <div class="game-item ${g.is_owner ? '' : 'joined-item'}" onclick="openGame(${g.id})">
           <div>
@@ -1068,7 +1077,8 @@ async function loadGameList() {
           </div>
           <div class="game-item-right">
             ${sharedBadge}
-            ${deleteBtn}
+            ${endedBadge}
+            ${actionBtn}
           </div>
         </div>`;
     }).join('');
@@ -1083,6 +1093,16 @@ function promptDelete(id, name) {
   _pendingDeleteId = id;
   document.getElementById('dialog-msg').textContent = `"${name}" and all its hands will be permanently deleted. This cannot be undone.`;
   document.getElementById('dialog-overlay').classList.add('visible');
+}
+function promptLeave(id, name) {
+  if (!confirm(`Leave "${name}"? You'll need a join code to rejoin.`)) return;
+  doLeaveGame(id);
+}
+async function doLeaveGame(id) {
+  loading(true);
+  try { await apiFetch(`/games/${id}/leave`, { method: 'DELETE' }); await loadGameList(); }
+  catch(e) { alert('Could not leave: ' + e.message); }
+  finally { loading(false); }
 }
 function closeDialog() { _pendingDeleteId = null; document.getElementById('dialog-overlay').classList.remove('visible'); }
 async function confirmDelete() {
@@ -1209,6 +1229,11 @@ async function openGame(gameId) {
     currentGame = game;
     currentGame._lastBoard = board;
     _adminMode  = false;
+    _scoreboardCollapsed = false;
+    document.getElementById('scoreboard-full').style.display      = '';
+    document.getElementById('scoreboard-condensed').style.display = 'none';
+    const chevron = document.getElementById('scoreboard-chevron');
+    if (chevron) chevron.style.transform = '';
     const isOwner = !!game.is_owner;
 
     document.getElementById('game-title-text').textContent     = game.name;
@@ -1217,12 +1242,17 @@ async function openGame(gameId) {
     document.getElementById('new-player-name').value = '';
 
     // Show/hide owner-only controls
-    document.getElementById('add-hand-btn').style.display  = isOwner ? '' : 'none';
-    document.getElementById('end-game-btn').style.display   = isOwner ? '' : 'none';
-    document.getElementById('add-player-section').style.display = isOwner ? 'block' : 'none';
+    document.getElementById('add-hand-btn').style.display  = isOwner && game.is_active ? '' : 'none';
+    document.getElementById('end-game-btn').style.display   = isOwner && game.is_active ? '' : 'none';
+    document.getElementById('add-player-section').style.display = isOwner && game.is_active ? 'block' : 'none';
 
     renderPlayerRoster(game.players, isOwner, board);
     renderScoreboard(game.players, board);
+    // Show/hide settlement panel
+    document.getElementById('settlement-panel').style.display = 'none';
+    const titleEl = document.getElementById('game-title-text');
+    titleEl.querySelectorAll('.ended-badge').forEach(b => b.remove());
+    if (!game.is_active) _applyEndedGameUI();
     showScreen('screen-game');
     _startAutoRefresh();
   } catch(e) { alert('Could not load game: ' + e.message); }
@@ -1424,6 +1454,11 @@ function renderScoreboard(players, board) {
     tbody.innerHTML = ''; tfoot.innerHTML = '';
     thead.innerHTML = `<tr><th style="text-align:left">Hand</th>${players.map(p =>
       `<th class="player-th ${p.is_active ? '' : 'inactive-th'}">${esc(p.name)}</th>`).join('')}</tr>`;
+    // Clear condensed view so previous game's data doesn't bleed through
+    const ct = document.getElementById('score-thead-condensed');
+    const cb = document.getElementById('score-tbody-condensed');
+    if (ct) ct.innerHTML = '';
+    if (cb) cb.innerHTML = '';
     empty.style.display = 'block'; table.style.display = 'none'; return;
   }
   empty.style.display = 'none'; table.style.display = '';
@@ -1626,27 +1661,18 @@ async function finalizeHand() {
 
 // ── End Game / Settlement ─────────────────────────────────────────────────────
 function _computeSettlements(players, totals, stake) {
-  // Build net balances: positive = owed money, negative = owes money
   const balances = players.map(p => ({
     name:    p.name,
     balance: (totals[p.id] ?? 0) * stake,
   }));
-
-  // Minimum-transfer greedy algorithm
   const transfers = [];
-  const debtors   = balances.filter(b => b.balance < -0.001).sort((a,b) => a.balance - b.balance);
-  const creditors = balances.filter(b => b.balance >  0.001).sort((a,b) => b.balance - a.balance);
-  const d = debtors.map(b => ({ ...b }));
-  const c = creditors.map(b => ({ ...b }));
-
+  const d = balances.filter(b => b.balance < -0.001).sort((a,b) => a.balance - b.balance).map(b => ({...b}));
+  const c = balances.filter(b => b.balance >  0.001).sort((a,b) => b.balance - a.balance).map(b => ({...b}));
   let di = 0, ci = 0;
   while (di < d.length && ci < c.length) {
     const amount = Math.min(-d[di].balance, c[ci].balance);
-    if (amount > 0.001) {
-      transfers.push({ from: d[di].name, to: c[ci].name, amount });
-    }
-    d[di].balance += amount;
-    c[ci].balance -= amount;
+    if (amount > 0.001) transfers.push({ from: d[di].name, to: c[ci].name, amount });
+    d[di].balance += amount; c[ci].balance -= amount;
     if (Math.abs(d[di].balance) < 0.001) di++;
     if (Math.abs(c[ci].balance) < 0.001) ci++;
   }
@@ -1654,36 +1680,59 @@ function _computeSettlements(players, totals, stake) {
 }
 
 function showEndGame() {
-  const board = currentGame._lastBoard;
-  if (!board || !board.hands?.length) {
-    alert('No hands have been played yet.');
-    return;
+  if (!currentGame._lastBoard?.hands?.length) { alert('No hands have been played yet.'); return; }
+  document.getElementById('end-game-confirm-overlay').classList.add('visible');
+}
+function closeEndGameConfirm() {
+  document.getElementById('end-game-confirm-overlay').classList.remove('visible');
+}
+async function confirmEndGame() {
+  closeEndGameConfirm();
+  loading(true);
+  try {
+    await apiFetch(`/games/${currentGame.id}/end`, { method: 'POST' });
+    currentGame.is_active = false;
+    _applyEndedGameUI();
+  } catch(e) { alert('Could not end game: ' + e.message); }
+  finally { loading(false); }
+}
+
+function _applyEndedGameUI() {
+  // Lock out owner controls
+  document.getElementById('add-hand-btn').style.display = 'none';
+  document.getElementById('end-game-btn').style.display = 'none';
+  document.getElementById('add-player-section').style.display = 'none';
+  // Show ended badge in title
+  const titleEl = document.getElementById('game-title-text');
+  if (titleEl && !titleEl.querySelector('.ended-badge')) {
+    titleEl.insertAdjacentHTML('beforeend',
+      ' <span class="ended-badge" style="font-family:\'DM Mono\',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--red-lt);border:1px solid rgba(192,57,43,.4);border-radius:4px;padding:2px 6px;vertical-align:middle">Ended</span>');
   }
+  renderSettlementPanel();
+}
 
+function renderSettlementPanel() {
+  const board = currentGame._lastBoard;
+  if (!board) return;
   const { totals } = board;
-  const players    = currentGame.players;
-  const stake      = parseFloat(currentGame.stake_per_point) || 0;
-  const currency   = currentGame.currency || 'USD';
-  const symMap     = { USD:'$', NPR:'Rs', EUR:'€', GBP:'£', INR:'₹', CAD:'C$' };
-  const sym        = symMap[currency] || currency;
+  const players  = currentGame.players;
+  const stake    = parseFloat(currentGame.stake_per_point) || 0;
+  const symMap   = { USD:'$', NPR:'Rs', EUR:'€', GBP:'£', INR:'₹', CAD:'C$', AUD:'A$', JPY:'¥', CHF:'Fr', SGD:'S$' };
+  const sym      = symMap[currentGame.currency] || currentGame.currency || '';
 
-  // Find overall winner (highest total)
   const winner = players.reduce((best, p) =>
     (totals[p.id] ?? 0) > (totals[best.id] ?? 0) ? p : best, players[0]);
+  document.getElementById('settlement-winner').innerHTML =
+    `<strong style="color:var(--gold)">${esc(winner.name)}</strong> wins with ${totals[winner.id] > 0 ? '+' : ''}${totals[winner.id] ?? 0} pts`;
 
-  document.getElementById('end-game-winner').innerHTML =
-    `🏆 <strong style="color:var(--gold)">${esc(winner.name)}</strong> wins with ${totals[winner.id] > 0 ? '+' : ''}${totals[winner.id] ?? 0} points`;
-
-  const el = document.getElementById('end-game-transfers');
+  const el = document.getElementById('settlement-transfers');
   if (stake > 0) {
     const transfers = _computeSettlements(players, totals, stake);
     if (!transfers.length) {
       el.innerHTML = `<div class="settlement-zero">Everyone is even — no transfers needed!</div>`;
     } else {
       el.innerHTML = `
-        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-mute);margin-bottom:10px">
-          Money transfers to settle up
-        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-mute);margin-bottom:10px">Transfers to settle up</div>
         ${transfers.map(t => `
           <div class="settlement-card">
             <span class="settlement-from">${esc(t.from)}</span>
@@ -1694,29 +1743,22 @@ function showEndGame() {
           </div>`).join('')}`;
     }
   } else {
-    // Show just points totals sorted
     const sorted = [...players].sort((a,b) => (totals[b.id]??0) - (totals[a.id]??0));
-    el.innerHTML = `
-      <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-mute);margin-bottom:10px">Final Standings</div>
-      ${sorted.map((p,i) => {
-        const t = totals[p.id] ?? 0;
-        return `<div class="settlement-card" style="justify-content:space-between">
-          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mute);width:20px">${i+1}</span>
-          <span class="settlement-from" style="color:var(--text)">${esc(p.name)}</span>
-          <span class="settlement-amount" style="font-size:15px" class="${ptsClass(t)}">${t>0?'+':''}${t}</span>
-        </div>`;
-      }).join('')}`;
+    el.innerHTML = sorted.map((p, i) => {
+      const t = totals[p.id] ?? 0;
+      return `<div class="settlement-card" style="justify-content:space-between">
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-mute);width:20px">${i+1}</span>
+        <span style="font-family:'Lora',serif;font-size:15px;flex:1">${esc(p.name)}</span>
+        <span class="${ptsClass(t)}" style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700">${t>0?'+':''}${t}</span>
+      </div>`;
+    }).join('');
   }
 
-  document.getElementById('end-game-overlay').classList.add('visible');
+  document.getElementById('settlement-panel').style.display = '';
 }
 
-function closeEndGame() {
-  document.getElementById('end-game-overlay').classList.remove('visible');
-}
-
-document.getElementById('end-game-overlay').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeEndGame();
+document.getElementById('end-game-confirm-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeEndGameConfirm();
 });
 let _currentShareCode = '';
 

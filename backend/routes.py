@@ -7,7 +7,7 @@ as "Authorization: Bearer <token>" — no cookies, works on Safari iOS.
 import hmac, hashlib, base64, json, time, os
 from flask import Blueprint, request, jsonify, g
 from game_model import (create_game, list_games, get_game, get_scoreboard,
-                         add_player, set_player_active, delete_game,
+                         add_player, set_player_active, delete_game, end_game,
                          get_or_create_join_code, join_game_by_code,
                          get_game_members, user_can_access,
                          rename_player, delete_player)
@@ -214,6 +214,25 @@ def route_share_game(game_id):
     })
 
 
+@api.delete("/games/<int:game_id>/leave")
+def route_leave_game(game_id):
+    if (e := _require_auth()): return e
+    uid = _uid()
+    game = get_game(game_id)
+    if not game: return _err("Game not found.", 404)
+    if game.get("user_id") == uid:
+        return _err("You are the owner — delete the game instead.", 400)
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute(
+        "DELETE FROM game_members WHERE game_id = %s AND user_id = %s",
+        (game_id, uid),
+    )
+    conn.commit()
+    cur.close(); conn.close()
+    return jsonify({"left": game_id})
+
+
 @api.post("/games/join")
 def route_join_game():
     if (e := _require_auth()): return e
@@ -317,6 +336,18 @@ def route_delete_player(player_id):
     return jsonify({"deleted": player_id})
 
 
+@api.post("/games/<int:game_id>/end")
+def route_end_game(game_id):
+    if (e := _require_auth()): return e
+    game = get_game(game_id)
+    if not game: return _err("Game not found.", 404)
+    if (e := _require_owner(game)): return e
+    if not game.get("is_active", True):
+        return _err("Game is already ended.", 400)
+    end_game(game_id)
+    return jsonify({"ended": game_id})
+
+
 # ── Hands ──────────────────────────────────────────────────────────────────────
 
 @api.post("/games/<int:game_id>/hands")
@@ -325,6 +356,8 @@ def route_finalize_hand(game_id):
     game = get_game(game_id)
     if not game: return _err("Game not found.", 404)
     if (e := _require_owner(game)): return e
+    if not game.get("is_active", True):
+        return _err("This game has ended. No more hands can be added.", 400)
 
     data        = request.get_json(force=True)
     raw_entries = data.get("entries", [])
