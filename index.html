@@ -1082,9 +1082,10 @@ async function doLogin() {
   const pin  = document.getElementById('login-pin').value.trim();
   loading(true);
   try {
-    _handleAuthResponse(await apiFetch('/auth/login', { method:'POST', body: JSON.stringify({ name, pin }) }));
-  } catch(e) { showError('login-error', e.message); }
-  finally { loading(false); }
+    const resp = await apiFetch('/auth/login', { method:'POST', body: JSON.stringify({ name, pin }) });
+    loading(false);
+    _handleAuthResponse(resp);
+  } catch(e) { showError('login-error', e.message); loading(false); }
 }
 
 async function doRegister() {
@@ -1094,9 +1095,10 @@ async function doRegister() {
   if (pin !== pin2) { showError('reg-error', 'PINs do not match.'); return; }
   loading(true);
   try {
-    _handleAuthResponse(await apiFetch('/auth/register', { method:'POST', body: JSON.stringify({ name, pin }) }));
-  } catch(e) { showError('reg-error', e.message); }
-  finally { loading(false); }
+    const resp = await apiFetch('/auth/register', { method:'POST', body: JSON.stringify({ name, pin }) });
+    loading(false);
+    _handleAuthResponse(resp);
+  } catch(e) { showError('reg-error', e.message); loading(false); }
 }
 
 async function doLogout() {
@@ -1108,10 +1110,10 @@ async function doLogout() {
 
 // ── Home / Game List ──────────────────────────────────────────────────────────
 async function loadGameList() {
-  loading(true);
+  const list = document.getElementById('game-list');
+  list.innerHTML = '<div class="empty-state" style="opacity:.5"><span class="big-suit">♠</span>Loading…</div>';
   try {
     const games = await apiFetch('/games');
-    const list = document.getElementById('game-list');
     if (!games.length) {
       list.innerHTML = '<div class="empty-state"><span class="big-suit">♠</span>No games yet. Start one or join a friend\'s!</div>';
       return;
@@ -1137,8 +1139,8 @@ async function loadGameList() {
     }).join('');
   } catch(e) {
     if (e.message.includes('logged in')) { showScreen('screen-auth'); return; }
-    alert('Could not load games: ' + e.message);
-  } finally { loading(false); }
+    list.innerHTML = '<div class="empty-state"><span class="big-suit">♠</span>Could not load games. Pull to refresh.</div>';
+  }
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────────
@@ -2060,14 +2062,16 @@ async function adminOpenGame(gameId, userId) {
   if (cachedPw) _adminPassword = cachedPw;
   const token = localStorage.getItem('mc-token');
   if (!token) { showScreen('screen-auth'); return; }
+  loading(true);
   try {
     const user = await apiFetch('/auth/me');
     currentUser = { id: user.id, name: user.name, is_admin: !!user.is_admin };
     renderUserBadge();
+    loading(false);
     showScreen('screen-home');
   } catch(_) {
-    // Token expired or invalid — clear it and show auth
     localStorage.removeItem('mc-token');
+    loading(false);
     showScreen('screen-auth');
   }
 })();
