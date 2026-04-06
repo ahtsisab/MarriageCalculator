@@ -77,6 +77,15 @@ def create_game(name: str, player_names: list[str], user_id: int | None = None,
     return game
 
 
+def resume_game(game_id: int) -> None:
+    """Mark a game as active again (is_active = True)."""
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute("UPDATE games SET is_active = %s WHERE id = %s", (_bool_val(True), game_id))
+    conn.commit()
+    cur.close(); conn.close()
+
+
 def end_game(game_id: int) -> None:
     """Mark a game as ended (is_active = False)."""
     conn = get_connection()

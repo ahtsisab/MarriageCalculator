@@ -218,6 +218,15 @@ class TestGameModel(unittest.TestCase):
         fetched = get_game(g["id"])
         self.assertFalse(fetched["is_active"])
 
+    def test_resume_game_marks_active(self):
+        from game_model import create_game, get_game, end_game, resume_game
+        u = self._register_user("gm_user8")
+        g = create_game("G", ["A","B","C"], user_id=u["id"])
+        end_game(g["id"])
+        self.assertFalse(get_game(g["id"])["is_active"])
+        resume_game(g["id"])
+        self.assertTrue(get_game(g["id"])["is_active"])
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # 4. API ROUTES — Flask test client
@@ -301,6 +310,33 @@ class TestRoutes(unittest.TestCase):
         })
         self.assertEqual(r.status_code, 400)
         self.assertIn("ended", r.get_json()["error"].lower())
+
+    def test_resume_game_allows_hands_again(self):
+        g = self._create_game()
+        pid = [p["id"] for p in g["players"]]
+        # End then resume
+        self.client.post(f"/api/games/{g['id']}/end", headers=self.headers)
+        r = self.client.post(f"/api/games/{g['id']}/resume", headers=self.headers)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json()["resumed"], g["id"])
+        # Verify is_active is True
+        fetched = self.client.get(f"/api/games/{g['id']}", headers=self.headers).get_json()
+        self.assertTrue(fetched["is_active"])
+        # Can now add a hand
+        r = self.client.post(f"/api/games/{g['id']}/hands", headers=self.headers, json={
+            "better_game": False,
+            "entries": [
+                {"player_id":pid[0],"status":"seen","maal":10,"is_winner":True},
+                {"player_id":pid[1],"status":"seen","maal":5,"is_winner":False},
+                {"player_id":pid[2],"status":"seen","maal":0,"is_winner":False},
+            ]
+        })
+        self.assertEqual(r.status_code, 201)
+
+    def test_resume_active_game_rejected(self):
+        g = self._create_game()
+        r = self.client.post(f"/api/games/{g['id']}/resume", headers=self.headers)
+        self.assertEqual(r.status_code, 400)
 
     def test_delete_only_last_hand(self):
         g = self._create_game()
@@ -396,7 +432,7 @@ class TestFrontend(unittest.TestCase):
             # Game screen
             "screen-game", "game-breadcrumb-bar", "game-title-text",
             "player-roster", "add-player-section", "new-player-name",
-            "add-hand-btn", "end-game-btn", "share-btn",
+            "add-hand-btn", "end-game-btn", "resume-game-header-btn", "share-btn",
             "scoreboard-full", "scoreboard-condensed",
             "score-thead", "score-tbody", "score-tfoot",
             "scoreboard-empty", "settlement-panel",
@@ -453,9 +489,9 @@ class TestFrontend(unittest.TestCase):
             # Share/join
             "showShareDialog", "closeShareDialog", "copyJoinCode",
             "showJoinDialog", "closeJoinDialog", "doJoinGame",
-            # End game
+            # End/resume game
             "showEndGame", "closeEndGameConfirm", "confirmEndGame",
-            "renderSettlementPanel",
+            "renderSettlementPanel", "doResumeGame",
             # Admin
             "openAdminDialog", "submitAdminPassword", "loadAdminScreen",
             "renderAdminScreen", "toggleAdminUser", "adminOpenGame",

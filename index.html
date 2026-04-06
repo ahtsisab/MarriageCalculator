@@ -787,6 +787,7 @@ body::before { display: none; }
       <div style="display:flex;gap:8px">
         <button class="btn-secondary btn-sm" id="share-btn" onclick="showShareDialog()">Share</button>
         <button class="btn-ghost btn-sm" id="end-game-btn" onclick="showEndGame()" style="color:var(--red-lt);border-color:rgba(192,57,43,.3)">End Game</button>
+        <button class="btn-ghost btn-sm" id="resume-game-header-btn" onclick="doResumeGame()" style="display:none;color:var(--green-lt);border-color:rgba(39,174,96,.3)">Resume</button>
       </div>
     </div>
     <div class="card" style="margin-bottom:12px" data-suit="♣">
@@ -842,7 +843,7 @@ body::before { display: none; }
     </div>
     <!-- Settlement panel — shown permanently when game is ended -->
     <div id="settlement-panel" style="display:none;margin-top:12px">
-      <div class="card" data-suit="♥">
+        <div class="card" data-suit="♥">
         <h3 style="margin:0 0 14px">🏆 Final Settlement</h3>
         <div id="settlement-winner" style="margin-bottom:12px;font-size:14px;color:var(--text-dim)"></div>
         <div id="settlement-transfers"></div>
@@ -1351,9 +1352,10 @@ async function openGame(gameId) {
     const canEdit = isOwner && game.is_active;
 
     // Show/hide owner-only controls
-    document.getElementById('add-hand-btn').style.display       = canEdit ? '' : 'none';
-    document.getElementById('end-game-btn').style.display       = canEdit ? '' : 'none';
-    document.getElementById('add-player-section').style.display = canEdit ? 'block' : 'none';
+    document.getElementById('add-hand-btn').style.display         = canEdit ? '' : 'none';
+    document.getElementById('end-game-btn').style.display         = canEdit ? '' : 'none';
+    document.getElementById('add-player-section').style.display   = canEdit ? 'block' : 'none';
+    document.getElementById('resume-game-header-btn').style.display = 'none'; // set by _applyEndedGameUI if needed
 
     renderPlayerRoster(game.players, canEdit, board);
     renderScoreboard(game.players, board);
@@ -1802,6 +1804,25 @@ function showEndGame() {
   if (!currentGame._lastBoard?.hands?.length) { alert('No hands have been played yet.'); return; }
   document.getElementById('end-game-confirm-overlay').classList.add('visible');
 }
+async function doResumeGame() {
+  if (!confirm('Resume this game? Hands can be added again.')) return;
+  loading(true);
+  try {
+    await apiFetch(`/games/${currentGame.id}/resume`, { method: 'POST' });
+    currentGame.is_active = true;
+    const isOwner = !!currentGame.is_owner;
+    document.getElementById('add-hand-btn').style.display         = isOwner ? '' : 'none';
+    document.getElementById('end-game-btn').style.display         = isOwner ? '' : 'none';
+    document.getElementById('add-player-section').style.display   = isOwner ? 'block' : 'none';
+    document.getElementById('share-btn').style.display            = '';
+    document.getElementById('resume-game-header-btn').style.display = 'none';
+    document.getElementById('settlement-panel').style.display     = 'none';
+    document.getElementById('game-title-text').querySelectorAll('.ended-badge').forEach(b => b.remove());
+    renderPlayerRoster(currentGame.players, isOwner, currentGame._lastBoard);
+  } catch(e) { alert('Could not resume: ' + e.message); }
+  finally { loading(false); }
+}
+
 function closeEndGameConfirm() {
   document.getElementById('end-game-confirm-overlay').classList.remove('visible');
 }
@@ -1822,10 +1843,14 @@ function _applyEndedGameUI() {
   document.getElementById('end-game-btn').style.display    = 'none';
   document.getElementById('add-player-section').style.display = 'none';
   document.getElementById('share-btn').style.display       = 'none';
+  // Show resume button (owner only)
+  const resumeHeaderBtn = document.getElementById('resume-game-header-btn');
+  if (resumeHeaderBtn) resumeHeaderBtn.style.display = currentGame?.is_owner ? '' : 'none';
   // Re-render player roster as read-only (game ended, no editing regardless of ownership)
   if (currentGame) {
     renderPlayerRoster(currentGame.players, false, currentGame._lastBoard);
   }
+  // Show/hide resume button based on ownership is handled above
   // Show ended badge in title
   const titleEl = document.getElementById('game-title-text');
   if (titleEl && !titleEl.querySelector('.ended-badge')) {

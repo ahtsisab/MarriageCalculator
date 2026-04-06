@@ -7,7 +7,7 @@ as "Authorization: Bearer <token>" — no cookies, works on Safari iOS.
 import hmac, hashlib, base64, json, time, os
 from flask import Blueprint, request, jsonify, g
 from game_model import (create_game, list_games, get_game, get_scoreboard,
-                         add_player, set_player_active, delete_game, end_game,
+                         add_player, set_player_active, delete_game, end_game, resume_game,
                          get_or_create_join_code, join_game_by_code,
                          get_game_members, user_can_access,
                          rename_player, delete_player)
@@ -340,6 +340,18 @@ def route_delete_player(player_id):
     except ValueError as exc:
         return _err(str(exc))
     return jsonify({"deleted": player_id})
+
+
+@api.post("/games/<int:game_id>/resume")
+def route_resume_game(game_id):
+    if (e := _require_auth()): return e
+    game = get_game(game_id)
+    if not game: return _err("Game not found.", 404)
+    if (e := _require_owner(game)): return e
+    if game.get("is_active", True):
+        return _err("Game is already active.", 400)
+    resume_game(game_id)
+    return jsonify({"resumed": game_id})
 
 
 @api.post("/games/<int:game_id>/end")
