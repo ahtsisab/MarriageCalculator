@@ -2060,19 +2060,21 @@ async function adminOpenGame(gameId, userId) {
   // Restore admin password for the session
   const cachedPw = sessionStorage.getItem('mc-admin-pw');
   if (cachedPw) _adminPassword = cachedPw;
+
   const token = localStorage.getItem('mc-token');
   if (!token) { showScreen('screen-auth'); return; }
-  loading(true);
+
+  // Token exists — show auth screen immediately so UI is never blocked,
+  // then verify silently and navigate to home if valid.
+  showScreen('screen-auth');
   try {
     const user = await apiFetch('/auth/me');
     currentUser = { id: user.id, name: user.name, is_admin: !!user.is_admin };
     renderUserBadge();
-    loading(false);
     showScreen('screen-home');
   } catch(_) {
+    // Token expired or invalid — stay on auth screen
     localStorage.removeItem('mc-token');
-    loading(false);
-    showScreen('screen-auth');
   }
 })();
 </script>
