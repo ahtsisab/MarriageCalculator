@@ -1338,12 +1338,14 @@ async function openGame(gameId) {
     _renderGameBreadcrumb(game.name);
     document.getElementById('new-player-name').value = '';
 
-    // Show/hide owner-only controls
-    document.getElementById('add-hand-btn').style.display  = isOwner && game.is_active ? '' : 'none';
-    document.getElementById('end-game-btn').style.display   = isOwner && game.is_active ? '' : 'none';
-    document.getElementById('add-player-section').style.display = isOwner && game.is_active ? 'block' : 'none';
+    const canEdit = isOwner && game.is_active;
 
-    renderPlayerRoster(game.players, isOwner, board);
+    // Show/hide owner-only controls
+    document.getElementById('add-hand-btn').style.display       = canEdit ? '' : 'none';
+    document.getElementById('end-game-btn').style.display       = canEdit ? '' : 'none';
+    document.getElementById('add-player-section').style.display = canEdit ? 'block' : 'none';
+
+    renderPlayerRoster(game.players, canEdit, board);
     renderScoreboard(game.players, board);
     // Show/hide settlement panel
     document.getElementById('settlement-panel').style.display = 'none';
@@ -1389,7 +1391,8 @@ function renderPlayerRoster(players, isOwner, board) {
 async function _refreshGameView() {
   const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
   currentGame._lastBoard = board;
-  renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
+  const canEdit = !!currentGame.is_owner && !!currentGame.is_active;
+  renderPlayerRoster(currentGame.players, canEdit, board);
   renderScoreboard(currentGame.players, board);
   return board;
 }
@@ -1460,7 +1463,8 @@ async function refreshScoreboard() {
   try {
     const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
     currentGame._lastBoard = board;
-    renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
+    const canEdit = !!currentGame.is_owner && !!currentGame.is_active;
+    renderPlayerRoster(currentGame.players, canEdit, board);
     renderScoreboard(currentGame.players, board);
   } catch(e) { /* silent on auto-refresh; manual refresh shows alert below */ throw e; }
   finally {
