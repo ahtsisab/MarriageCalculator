@@ -1216,34 +1216,25 @@ function setPlayerCount(n) {
   const container = document.getElementById('player-inputs');
 
   if (n > prev) {
-    // Add only the new rows needed, preserving existing ones
     const newRows = Array.from({length: n - prev}, (_, j) => {
       const i = prev + j;
-      return `<div class="player-input-row" style="flex-direction:column;align-items:stretch;gap:6px">
-        <div style="display:flex;gap:10px;align-items:center">
-          <span class="suit-badge">${SUITS[i]}</span>
-          <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off"
-            oninput="refreshSuggestionPills()">
-        </div>
-        <div id="inline-pills-${i}" style="display:none;flex-wrap:wrap;gap:4px;padding-left:38px"></div>
+      return `<div class="player-input-row">
+        <span class="suit-badge">${SUITS[i]}</span>
+        <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off"
+          oninput="refreshSuggestionPills()">
       </div>`;
     }).join('');
     container.insertAdjacentHTML('beforeend', newRows);
     document.getElementById(`pname-${prev}`)?.focus();
   } else if (n < prev) {
-    // Remove extra rows from the end
     const rows = container.querySelectorAll('.player-input-row');
     for (let i = n; i < rows.length; i++) rows[i].remove();
   } else if (prev === 0) {
-    // First time — render all rows
     container.innerHTML = Array.from({length: n}, (_, i) => `
-      <div class="player-input-row" style="flex-direction:column;align-items:stretch;gap:6px">
-        <div style="display:flex;gap:10px;align-items:center">
-          <span class="suit-badge">${SUITS[i]}</span>
-          <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off"
-            oninput="refreshSuggestionPills()">
-        </div>
-        <div id="inline-pills-${i}" style="display:none;flex-wrap:wrap;gap:4px;padding-left:38px"></div>
+      <div class="player-input-row">
+        <span class="suit-badge">${SUITS[i]}</span>
+        <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off"
+          oninput="refreshSuggestionPills()">
       </div>`).join('');
     document.getElementById('pname-0')?.focus();
   }
@@ -1259,52 +1250,46 @@ async function loadPlayerSuggestions() {
 }
 
 function refreshSuggestionPills() {
-  // Hide the old global pills container
   const container = document.getElementById('suggestion-pills');
-  if (container) container.style.display = 'none';
+  const pillList  = document.getElementById('suggestion-pill-list');
+  if (!container || !pillList || !_playerSuggestions.length) {
+    if (container) container.style.display = 'none';
+    return;
+  }
 
-  if (!_playerSuggestions.length || !selectedPlayerCount) return;
-
-  // Collect all currently entered names
-  const entered = Array.from({length: selectedPlayerCount}, (_, i) =>
-    (document.getElementById(`pname-${i}`)?.value || '').trim().toLowerCase()
+  const used = new Set(
+    Array.from({length: selectedPlayerCount}, (_, i) =>
+      (document.getElementById(`pname-${i}`)?.value || '').trim().toLowerCase()
+    ).filter(Boolean)
   );
 
-  // For each slot, show suggestions not used in any other slot
-  for (let i = 0; i < selectedPlayerCount; i++) {
-    const row = document.getElementById(`inline-pills-${i}`);
-    if (!row) continue;
+  const allFilled = selectedPlayerCount > 0 &&
+    Array.from({length: selectedPlayerCount}, (_, i) =>
+      !!(document.getElementById(`pname-${i}`)?.value || '').trim()
+    ).every(Boolean);
 
-    const thisVal  = entered[i];
-    const otherVals = entered.filter((_, j) => j !== i);
-    const matches  = _playerSuggestions.filter(name => {
-      const lower = name.toLowerCase();
-      return !otherVals.includes(lower) && lower !== thisVal;
-    });
+  pillList.innerHTML = _playerSuggestions.map(name => {
+    const isUsed = used.has(name.toLowerCase()) || allFilled;
+    return `<button class="suggestion-pill ${isUsed ? 'used' : ''}"
+      onclick="pickSuggestionPill('${esc(name)}')">${esc(name)}</button>`;
+  }).join('');
 
-    if (!matches.length || thisVal) {
-      // Hide when slot is filled or no suggestions
-      row.style.display = 'none';
-      row.innerHTML = '';
-    } else {
-      row.style.display = 'flex';
-      row.innerHTML = matches.map(name =>
-        `<button class="suggestion-pill" style="font-size:11px;padding:3px 9px"
-          onclick="pickSuggestionPill(${i}, '${esc(name)}')">${esc(name)}</button>`
-      ).join('');
-    }
-  }
+  container.style.display = 'block';
 }
 
-function pickSuggestionPill(idx, name) {
-  const inp = document.getElementById(`pname-${idx}`);
-  if (inp) {
-    inp.value = name;
-    refreshSuggestionPills();
-    // Move focus to next empty slot
-    for (let i = idx + 1; i < selectedPlayerCount; i++) {
-      const next = document.getElementById(`pname-${i}`);
-      if (next && !next.value.trim()) { next.focus(); break; }
+function pickSuggestionPill(name) {
+  if (!selectedPlayerCount) {
+    showError('new-game-error', 'Please select the number of players first.');
+    return;
+  }
+  for (let i = 0; i < selectedPlayerCount; i++) {
+    const inp = document.getElementById(`pname-${i}`);
+    if (inp && !inp.value.trim()) {
+      inp.value = name;
+      refreshSuggestionPills();
+      const next = document.getElementById(`pname-${i + 1}`);
+      if (next && !next.value.trim()) next.focus();
+      return;
     }
   }
 }
@@ -1384,7 +1369,7 @@ async function openGame(gameId) {
 }
 
 // ── Players ───────────────────────────────────────────────────────────────────
-function renderPlayerRoster(players, isOwner, board) {
+function renderPlayerRoster(players, canEdit, board) {
   const playedIds = new Set(
     (board?.hands || []).flatMap(h => (h.entries || []).map(e => e.player_id))
   );
@@ -1392,14 +1377,14 @@ function renderPlayerRoster(players, isOwner, board) {
   const activeCount = players.filter(p => p.is_active).length;
 
   document.getElementById('player-roster').innerHTML = players.map(p => {
-    const canDelete    = isOwner && !playedIds.has(p.id);
+    const canDelete    = canEdit && !playedIds.has(p.id);
     // Hide the deactivate switch if this player is active and we're at the minimum
     const canDeactivate = p.is_active ? activeCount > 3 : activeCount < 6;
 
     return `
     <div class="player-chip ${p.is_active ? '' : 'inactive'}">
       <span class="chip-name">${esc(p.name)}</span>
-      ${isOwner ? `
+      ${canEdit ? `
         <button class="chip-action" onclick="startRenamePlayer(${p.id}, '${esc(p.name)}')" title="Rename">✏️</button>
         ${canDeactivate ? `
           <div class="chip-toggle-wrap">
@@ -1837,6 +1822,10 @@ function _applyEndedGameUI() {
   document.getElementById('end-game-btn').style.display    = 'none';
   document.getElementById('add-player-section').style.display = 'none';
   document.getElementById('share-btn').style.display       = 'none';
+  // Re-render player roster as read-only (game ended, no editing regardless of ownership)
+  if (currentGame) {
+    renderPlayerRoster(currentGame.players, false, currentGame._lastBoard);
+  }
   // Show ended badge in title
   const titleEl = document.getElementById('game-title-text');
   if (titleEl && !titleEl.querySelector('.ended-badge')) {
