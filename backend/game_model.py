@@ -5,7 +5,7 @@ Game-level operations: create, list, fetch, share games and their players.
 import random
 import string
 from collections import defaultdict
-from database import get_connection, DB_BACKEND, insert_returning, where_in
+from database import get_connection, DB_BACKEND, insert_returning
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -115,12 +115,12 @@ def list_games(user_id: int | None = None) -> list[dict]:
                    COUNT(h.id) AS hand_count,
                    CASE WHEN g.user_id = %s THEN 1 ELSE 0 END AS is_owner
             FROM games g
+            LEFT JOIN game_members gm ON gm.game_id = g.id AND gm.user_id = %s
             LEFT JOIN hands h ON h.game_id = g.id
-            WHERE g.user_id = %s
-               OR g.id IN (SELECT game_id FROM game_members WHERE user_id = %s)
+            WHERE g.user_id = %s OR gm.user_id = %s
             GROUP BY g.id
             ORDER BY g.created_at DESC
-        """, (user_id, user_id, user_id))
+        """, (user_id, user_id, user_id, user_id))
     else:
         cur.execute("""
             SELECT g.id, g.name, g.created_at, g.is_active, g.user_id, g.join_code,
@@ -177,41 +177,50 @@ def get_scoreboard(game_id: int) -> dict:
     conn = get_connection()
     cur  = conn.cursor()
 
-    cur.execute(
-        "SELECT id, hand_number, better_game, played_at FROM hands WHERE game_id = %s ORDER BY hand_number",
-        (game_id,),
-    )
-    hands = [dict(r) for r in cur.fetchall()]
-    for h in hands:
-        h["better_game"] = bool(h["better_game"])
-
-    entries = []
-    if hands:
-        hand_ids = [h["id"] for h in hands]
-        frag, params = where_in("he.hand_id", hand_ids)
-        cur.execute(f"""
-            SELECT he.hand_id, he.player_id, p.name AS player_name, p.position,
-                   he.status, he.maal, he.points, he.is_winner
-            FROM hand_entries he
-            JOIN players p ON p.id = he.player_id
-            WHERE {frag}
-            ORDER BY he.hand_id, p.position
-        """, params)
-        entries = [dict(r) for r in cur.fetchall()]
-
+    # Single query: join hands → hand_entries → players, ordered for easy grouping
+    cur.execute("""
+        SELECT h.id AS hand_id, h.hand_number, h.better_game, h.played_at,
+               he.player_id, he.status, he.maal, he.points, he.is_winner,
+               p.name AS player_name, p.position
+        FROM hands h
+        LEFT JOIN hand_entries he ON he.hand_id = h.id
+        LEFT JOIN players p      ON p.id = he.player_id
+        WHERE h.game_id = %s
+        ORDER BY h.hand_number, p.position
+    """, (game_id,))
+    rows = cur.fetchall()
     cur.close()
     conn.close()
 
-    entries_by_hand: dict = defaultdict(list)
-    totals: dict = defaultdict(int)
-    for e in entries:
-        e["is_winner"] = bool(e["is_winner"])
-        entries_by_hand[e["hand_id"]].append(e)
-        totals[e["player_id"]] += e["points"]
+    hands_map: dict = {}
+    totals: dict    = defaultdict(int)
 
-    for h in hands:
-        h["entries"] = entries_by_hand[h["id"]]
+    for r in rows:
+        r = dict(r)
+        hid = r["hand_id"]
+        if hid not in hands_map:
+            hands_map[hid] = {
+                "id":          hid,
+                "hand_number": r["hand_number"],
+                "better_game": bool(r["better_game"]),
+                "played_at":   r["played_at"],
+                "entries":     [],
+            }
+        if r["player_id"] is not None:
+            entry = {
+                "hand_id":     hid,
+                "player_id":   r["player_id"],
+                "player_name": r["player_name"],
+                "position":    r["position"],
+                "status":      r["status"],
+                "maal":        r["maal"],
+                "points":      r["points"],
+                "is_winner":   bool(r["is_winner"]),
+            }
+            hands_map[hid]["entries"].append(entry)
+            totals[r["player_id"]] += r["points"]
 
+    hands = sorted(hands_map.values(), key=lambda h: h["hand_number"])
     return {"hands": hands, "totals": dict(totals)}
 
 

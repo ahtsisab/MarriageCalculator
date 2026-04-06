@@ -174,6 +174,14 @@ _SCHEMA_PG = [
         joined_at  TIMESTAMPTZ DEFAULT NOW(),
         PRIMARY KEY (game_id, user_id)
     )""",
+    # Indexes for common query patterns
+    "CREATE INDEX IF NOT EXISTS idx_players_game_id   ON players(game_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hands_game_id     ON hands(game_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hand_entries_hand ON hand_entries(hand_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hand_entries_player ON hand_entries(player_id)",
+    "CREATE INDEX IF NOT EXISTS idx_game_members_user ON game_members(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_games_user_id     ON games(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hands_game_hand    ON hands(game_id, hand_number DESC)",
 ]
 
 _SCHEMA_SQLITE = [
@@ -228,6 +236,14 @@ _SCHEMA_SQLITE = [
         joined_at TEXT DEFAULT (datetime('now')),
         PRIMARY KEY (game_id, user_id)
     )""",
+    # Indexes for common query patterns
+    "CREATE INDEX IF NOT EXISTS idx_players_game_id    ON players(game_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hands_game_id      ON hands(game_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hand_entries_hand  ON hand_entries(hand_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hand_entries_player ON hand_entries(player_id)",
+    "CREATE INDEX IF NOT EXISTS idx_game_members_user  ON game_members(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_games_user_id      ON games(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hands_game_hand     ON hands(game_id, hand_number DESC)",
 ]
 
 _MIGRATIONS_PG = [
@@ -247,6 +263,12 @@ _MIGRATIONS_PG = [
     "UPDATE games SET allow_better_game = FALSE WHERE allow_better_game IS NULL",
     "UPDATE games SET penalty_seen = 3 WHERE penalty_seen IS NULL",
     "UPDATE games SET penalty_unseen = 10 WHERE penalty_unseen IS NULL",
+    "CREATE INDEX IF NOT EXISTS idx_players_game_id    ON players(game_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hands_game_id      ON hands(game_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hand_entries_hand  ON hand_entries(hand_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hand_entries_player ON hand_entries(player_id)",
+    "CREATE INDEX IF NOT EXISTS idx_game_members_user  ON game_members(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_games_user_id      ON games(user_id)",
 ]
 
 _MIGRATIONS_SQLITE = [
@@ -266,6 +288,12 @@ _MIGRATIONS_SQLITE = [
     "UPDATE games SET allow_better_game = 0 WHERE allow_better_game IS NULL",
     "UPDATE games SET penalty_seen = 3 WHERE penalty_seen IS NULL",
     "UPDATE games SET penalty_unseen = 10 WHERE penalty_unseen IS NULL",
+    "CREATE INDEX IF NOT EXISTS idx_players_game_id    ON players(game_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hands_game_id      ON hands(game_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hand_entries_hand  ON hand_entries(hand_id)",
+    "CREATE INDEX IF NOT EXISTS idx_hand_entries_player ON hand_entries(player_id)",
+    "CREATE INDEX IF NOT EXISTS idx_game_members_user  ON game_members(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_games_user_id      ON games(user_id)",
 ]
 
 

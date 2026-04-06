@@ -1032,7 +1032,7 @@ function showScreen(id) {
     const optChevron = document.getElementById('game-options-chevron');
     if (optBody)    optBody.style.display = 'none';
     if (optChevron) optChevron.style.transform = '';
-    loadPlayerSuggestions();
+    loadPlayerSuggestions();  // prefetch, won't render until player count is chosen
   }
   if (id !== 'screen-game') _stopAutoRefresh();
 }
@@ -1253,7 +1253,7 @@ async function loadPlayerSuggestions() {
 function refreshSuggestionPills() {
   const container = document.getElementById('suggestion-pills');
   const pillList  = document.getElementById('suggestion-pill-list');
-  if (!container || !pillList || !_playerSuggestions.length) {
+  if (!container || !pillList || !_playerSuggestions.length || !selectedPlayerCount) {
     if (container) container.style.display = 'none';
     return;
   }
