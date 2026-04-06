@@ -98,10 +98,10 @@ header {
   display: flex; justify-content: center; padding: 10px 16px;
   padding-bottom: calc(10px + env(safe-area-inset-bottom));
   background: linear-gradient(transparent, var(--bg) 40%);
-  pointer-events: none; z-index: 50;
+  z-index: 150;
 }
 .theme-toggle {
-  pointer-events: all; cursor: pointer;
+  cursor: pointer;
   display: flex; align-items: center; gap: 7px; min-height: 0;
   padding: 6px 10px; border-radius: 20px;
   background: var(--surface); border: 1px solid var(--border);
@@ -1182,6 +1182,8 @@ function toggleGameOptions() {
   body.style.display    = open ? '' : 'none';
   chevron.style.transform = open ? 'rotate(90deg)' : '';
 }
+
+function setCurrency(sel) {
   const opt = sel.options[sel.selectedIndex];
   selectedCurrency = { code: sel.value, symbol: opt.dataset.symbol || sel.value };
 }
