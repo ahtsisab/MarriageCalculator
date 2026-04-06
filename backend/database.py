@@ -250,8 +250,6 @@ _MIGRATIONS_PG = [
 ]
 
 _MIGRATIONS_SQLITE = [
-
-_MIGRATIONS_SQLITE = [
     "ALTER TABLE players ADD COLUMN is_active INTEGER DEFAULT 1",
     "ALTER TABLE hands   ADD COLUMN better_game INTEGER DEFAULT 0",
     "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, pin_hash TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')))",
@@ -262,15 +260,13 @@ _MIGRATIONS_SQLITE = [
     "ALTER TABLE games ADD COLUMN currency TEXT DEFAULT 'USD'",
     "UPDATE games SET stake_per_point = 0.25 WHERE stake_per_point IS NULL",
     "UPDATE games SET currency = 'USD' WHERE currency IS NULL",
-    "ALTER TABLE games ADD COLUMN IF NOT EXISTS allow_better_game BOOLEAN DEFAULT FALSE",
-    "ALTER TABLE games ADD COLUMN IF NOT EXISTS penalty_seen INTEGER DEFAULT 3",
-    "ALTER TABLE games ADD COLUMN IF NOT EXISTS penalty_unseen INTEGER DEFAULT 10",
-    "UPDATE games SET allow_better_game = FALSE WHERE allow_better_game IS NULL",
+    "ALTER TABLE games ADD COLUMN allow_better_game INTEGER DEFAULT 0",
+    "ALTER TABLE games ADD COLUMN penalty_seen INTEGER DEFAULT 3",
+    "ALTER TABLE games ADD COLUMN penalty_unseen INTEGER DEFAULT 10",
+    "UPDATE games SET allow_better_game = 0 WHERE allow_better_game IS NULL",
     "UPDATE games SET penalty_seen = 3 WHERE penalty_seen IS NULL",
     "UPDATE games SET penalty_unseen = 10 WHERE penalty_unseen IS NULL",
 ]
-
-_MIGRATIONS_SQLITE = [
 
 
 def _run_migrations(cur, conn):
