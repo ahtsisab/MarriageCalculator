@@ -332,37 +332,42 @@ label {
 .add-player-row input { flex: 1; }
 
 /* ── Hand entry cards ── */
-.hand-entries { display: flex; flex-direction: column; gap: 10px; }
+.hand-entries {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
 .entry-card {
   background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 8px; padding: 12px 13px; transition: border-color .15s;
+  border-radius: 8px; padding: 9px 10px; transition: border-color .15s;
 }
 .entry-card.winner-card { border-color: var(--gold-dim); background: rgba(201,168,76,.04); }
 [data-theme="light"] .entry-card.winner-card { background: rgba(201,168,76,.07); }
 .entry-card-top {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 10px; gap: 8px;
+  margin-bottom: 7px; gap: 6px;
 }
 .entry-player-name {
-  font-family: 'Playfair Display', serif; font-size: 16px; flex: 1;
-  display: flex; align-items: center; gap: 6px;
+  font-family: 'Playfair Display', serif; font-size: 14px; flex: 1;
+  display: flex; align-items: center; gap: 5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.entry-player-suit { color: var(--text-dim); font-size: 14px; }
+.entry-player-suit { color: var(--text-dim); font-size: 12px; flex-shrink: 0; }
 .winner-toggle input[type="radio"] { display: none; }
 .winner-toggle-label {
-  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px;
-  text-transform: uppercase; padding: 6px 11px; border-radius: 20px;
+  font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .5px;
+  text-transform: uppercase; padding: 4px 7px; border-radius: 20px;
   border: 1px solid var(--border); background: var(--surface);
   color: var(--text-mute); transition: all .15s; cursor: pointer;
-  display: flex; align-items: center; gap: 5px; white-space: nowrap;
+  display: flex; align-items: center; gap: 4px; white-space: nowrap;
 }
 .winner-toggle input:checked + .winner-toggle-label {
   border-color: var(--gold); background: rgba(201,168,76,.15); color: var(--gold-lt);
 }
-.entry-card-bottom { display: flex; align-items: center; gap: 8px; }
-.status-group { display: flex; gap: 4px; flex: 1; }
+.entry-card-bottom { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.status-group { display: flex; gap: 3px; flex: 1; min-width: 0; }
 .status-btn {
-  flex: 1; padding: 7px 4px; font-family: 'DM Mono', monospace; font-size: 10px;
+  flex: 1; padding: 5px 2px; font-family: 'DM Mono', monospace; font-size: 9px;
   border: 1px solid var(--border); background: var(--surface);
   color: var(--text-dim); border-radius: 4px; transition: all .12s; min-height: 0;
 }
@@ -371,15 +376,15 @@ label {
 .status-btn.active-unseen { background: rgba(192,57,43,.15);  border-color: var(--red);      color: var(--red-lt); }
 .status-btn.active-duplee { background: rgba(201,168,76,.12); border-color: var(--gold-dim); color: var(--gold); }
 .status-btn.status-disabled { opacity: .25; cursor: not-allowed; }
-.maal-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.maal-label { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); white-space: nowrap; }
-.maal-input { width: 70px !important; text-align: right; font-family: 'DM Mono', monospace; font-size: 16px; padding: 7px 9px !important; }
+.maal-group { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.maal-label { font-family: 'DM Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); white-space: nowrap; }
+.maal-input { width: 58px !important; text-align: right; font-family: 'DM Mono', monospace; font-size: 14px; padding: 5px 7px !important; }
 
 /* ── Better Game toggle ── */
 .better-game-toggle {
-  display: flex; align-items: center; gap: 14px;
+  display: flex; align-items: center; gap: 12px;
   background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 8px; padding: 13px 15px; margin-bottom: 14px;
+  border-radius: 8px; padding: 10px 13px; margin-bottom: 10px;
   cursor: pointer; transition: all .15s; user-select: none;
 }
 .better-game-toggle.active { border-color: var(--gold); background: rgba(201,168,76,.07); }
@@ -572,7 +577,7 @@ body::before { display: none; }
 
 /* ── Hand entry card: suit pip top-right ── */
 .entry-card { position: relative; }
-.entry-suit-pip {
+.entry-suit-pip { display: none; }
   position: absolute; top: 10px; right: 11px;
   font-size: 13px; opacity: .2; pointer-events: none; line-height: 1;
 }
