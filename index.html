@@ -759,6 +759,18 @@ body::before { display: none; }
         </div>
       </div>
 
+      <!-- Player name suggestions (shown after count selected) -->
+      <div id="suggestion-pills" style="display:none;margin-bottom:14px">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-mute);margin-bottom:8px">Previous players — tap to add</div>
+        <div id="suggestion-pill-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+
+      <!-- Player name inputs -->
+      <div class="field" id="player-names-section" style="display:none">
+        <label>Player Names</label>
+        <div class="player-inputs" id="player-inputs"></div>
+      </div>
+
       <div id="new-game-error" class="error-msg"></div>
       <div class="section-actions">
         <button class="btn-primary" onclick="createGame()">Create Game</button>
