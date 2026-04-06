@@ -180,6 +180,10 @@ button {
 [data-theme="light"] .btn-primary { color: #fff; }
 .btn-primary:hover  { filter: brightness(1.08); transform: translateY(-1px); }
 .btn-primary:active { transform: none; filter: brightness(.95); }
+.btn-primary:disabled, .btn-primary[disabled] {
+  opacity: .35; cursor: not-allowed; box-shadow: none;
+  filter: none; transform: none; pointer-events: none;
+}
 .btn-secondary {
   background: transparent; color: var(--gold);
   border: 1px solid var(--gold-dim); padding: 10px 20px;
@@ -683,7 +687,8 @@ body::before { display: none; }
       <!-- Game name -->
       <div class="field">
         <label>Game Name</label>
-        <input type="text" id="new-game-name" placeholder="e.g. Friday Night, Dashain 2081…" autocomplete="off">
+        <input type="text" id="new-game-name" placeholder="e.g. Friday Night, Dashain 2081…" autocomplete="off"
+          oninput="_checkCreateGameReady()">
       </div>
 
       <!-- Game Options (collapsible) -->
@@ -779,7 +784,7 @@ body::before { display: none; }
 
       <div id="new-game-error" class="error-msg"></div>
       <div class="section-actions">
-        <button class="btn-primary" onclick="createGame()">Create Game</button>
+        <button class="btn-primary" id="create-game-btn" onclick="createGame()" disabled>Create Game</button>
         <button class="btn-ghost" onclick="showScreen('screen-home')">Cancel</button>
       </div>
     </div>
@@ -877,7 +882,7 @@ body::before { display: none; }
       <div id="add-hand-error" class="error-msg"></div>
       <div id="add-hand-success" class="success-msg"></div>
       <div class="section-actions">
-        <button class="btn-primary" onclick="finalizeHand()">Finalize Hand</button>
+        <button class="btn-primary" id="finalize-hand-btn" onclick="finalizeHand()" disabled>Finalize Hand</button>
         <button class="btn-ghost" onclick="goToCurrentGame()">Cancel</button>
       </div>
     </div>
@@ -1038,6 +1043,8 @@ function showScreen(id) {
     const optChevron = document.getElementById('game-options-chevron');
     if (optBody)    optBody.style.display = 'none';
     if (optChevron) optChevron.style.transform = '';
+    const cgBtn = document.getElementById('create-game-btn');
+    if (cgBtn) cgBtn.disabled = true;
     loadPlayerSuggestions();  // prefetch, won't render until player count is chosen
   }
   if (id !== 'screen-game') _stopAutoRefresh();
@@ -1202,6 +1209,23 @@ function toggleGameOptions() {
   chevron.style.transform = open ? 'rotate(90deg)' : '';
 }
 
+function _checkCreateGameReady() {
+  const name   = (document.getElementById('new-game-name')?.value || '').trim();
+  const count  = selectedPlayerCount;
+  const allNamed = count > 0 && Array.from({length: count}, (_, i) =>
+    !!(document.getElementById(`pname-${i}`)?.value || '').trim()
+  ).every(Boolean);
+  const btn = document.getElementById('create-game-btn');
+  if (btn) btn.disabled = !(name && allNamed);
+}
+
+function _checkHandReady() {
+  const hasWinner = handEntries.some(e => e.is_winner);
+  const allMaal   = handEntries.every(e => e.status === 'unseen' || e.maal !== null);
+  const btn = document.getElementById('finalize-hand-btn');
+  if (btn) btn.disabled = !(hasWinner && allMaal);
+}
+
 function setCurrency(sel) {
   const opt = sel.options[sel.selectedIndex];
   selectedCurrency = { code: sel.value, symbol: opt.dataset.symbol || sel.value };
@@ -1228,7 +1252,7 @@ function setPlayerCount(n) {
       return `<div class="player-input-row">
         <span class="suit-badge">${SUITS[i]}</span>
         <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off"
-          oninput="refreshSuggestionPills()">
+          oninput="refreshSuggestionPills();_checkCreateGameReady()">
       </div>`;
     }).join('');
     container.insertAdjacentHTML('beforeend', newRows);
@@ -1241,11 +1265,12 @@ function setPlayerCount(n) {
       <div class="player-input-row">
         <span class="suit-badge">${SUITS[i]}</span>
         <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off"
-          oninput="refreshSuggestionPills()">
+          oninput="refreshSuggestionPills();_checkCreateGameReady()">
       </div>`).join('');
     document.getElementById('pname-0')?.focus();
   }
   refreshSuggestionPills();
+  _checkCreateGameReady();
 }
 // ── Player name suggestion pills ──────────────────────────────────────────────
 let _playerSuggestions = [];
@@ -1294,6 +1319,7 @@ function pickSuggestionPill(name) {
     if (inp && !inp.value.trim()) {
       inp.value = name;
       refreshSuggestionPills();
+      _checkCreateGameReady();
       const next = document.getElementById(`pname-${i + 1}`);
       if (next && !next.value.trim()) next.focus();
       return;
@@ -1657,7 +1683,7 @@ function showAddHand() {
   if (active.length < 3) { alert('At least 3 players must be active.'); return; }
   _editingHandId = null;
   handEntries = active.map(p => ({ player_id: p.id, name: p.name, status: 'unseen', maal: null, is_winner: false }));
-  isBetterGame = false; renderBetterGameToggle(); renderHandEntries();
+  isBetterGame = false; renderBetterGameToggle(); renderHandEntries(); _checkHandReady();
   // Show/hide Better Game toggle based on game setting
   document.getElementById('better-game-toggle').style.display =
     currentGame?.allow_better_game ? '' : 'none';
@@ -1703,16 +1729,19 @@ function setWinner(idx) {
   handEntries.forEach((e, i) => { e.is_winner = i===idx; if (i===idx && e.status==='unseen') e.status='seen'; });
   document.getElementById('add-hand-error').classList.remove('visible');
   renderHandEntries();
+  _checkHandReady();
 }
 function setStatus(idx, s) {
   if (s==='unseen' && handEntries[idx].is_winner) return;
   handEntries[idx].status = s;
   if (s === 'unseen') handEntries[idx].maal = null;
   renderHandEntries();
+  _checkHandReady();
 }
 function setMaal(idx, val) {
   const n = parseInt(val, 10);
   handEntries[idx].maal = (val === '' || isNaN(n) || n < 0) ? null : n;
+  _checkHandReady();
 }
 let _editingHandId = null;
 
@@ -1747,6 +1776,7 @@ function editLastHand(handId) {
   isBetterGame = hand.better_game;
   renderBetterGameToggle();
   renderHandEntries();
+  _checkHandReady();
 
   // Show/hide Better Game toggle based on game setting
   document.getElementById('better-game-toggle').style.display =
