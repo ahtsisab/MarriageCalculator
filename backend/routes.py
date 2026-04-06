@@ -406,11 +406,9 @@ def route_delete_hand(hand_id):
         (hand["game_id"],),
     )
     last = cur.fetchone()
-    cur.close(); conn.close()
     if not last or last["id"] != hand_id:
+        cur.close(); conn.close()
         return _err("Only the last hand can be deleted.", 400)
-    conn = get_connection()
-    cur  = conn.cursor()
     cur.execute("DELETE FROM hands WHERE id = %s", (hand_id,))
     conn.commit()
     cur.close(); conn.close()

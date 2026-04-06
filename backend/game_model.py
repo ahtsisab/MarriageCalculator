@@ -237,6 +237,7 @@ def join_game_by_code(code: str, user_id: int) -> dict:
         cur.close(); conn.close()
         raise ValueError("You already own this game — it's already in your list.")
 
+    # Upsert membership — silently succeed if already a member
     try:
         cur.execute(
             "INSERT INTO game_members (game_id, user_id) VALUES (%s, %s)",
@@ -244,7 +245,7 @@ def join_game_by_code(code: str, user_id: int) -> dict:
         )
         conn.commit()
     except Exception:
-        conn.rollback()
+        conn.rollback()  # Already a member — unique constraint violation
 
     cur.close(); conn.close()
     return get_game(row["id"])
@@ -315,7 +316,7 @@ def add_player(game_id: int, name: str) -> dict:
         cur, conn,
         sql_pg="INSERT INTO players (game_id, name, position) VALUES (%s, %s, %s) RETURNING id, name, position, is_active",
         sql_sqlite="INSERT INTO players (game_id, name, position) VALUES (%s, %s, %s)",
-        params=(game_id, name.strip(), next_pos),
+        params=(game_id, name, next_pos),
     )
     conn.commit()
     cur.close()

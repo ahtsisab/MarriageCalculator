@@ -947,8 +947,6 @@ function _renderGameBreadcrumb(gameName) {
 // ── Theme ─────────────────────────────────────────────────────────────────────
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  const icon = document.getElementById('theme-icon');
-  if (icon) icon.textContent = theme === 'dark' ? '☀️' : '☀️';
   localStorage.setItem('mc-theme', theme);
 }
 function toggleTheme() {
@@ -1372,6 +1370,7 @@ async function refreshScoreboard() {
   if (btn) { btn.style.opacity = '.4'; btn.style.pointerEvents = 'none'; }
   try {
     const board = await apiFetch(`/games/${currentGame.id}/scoreboard`);
+    currentGame._lastBoard = board;
     renderPlayerRoster(currentGame.players, !!currentGame.is_owner, board);
     renderScoreboard(currentGame.players, board);
   } catch(e) { /* silent on auto-refresh; manual refresh shows alert below */ throw e; }
@@ -1709,9 +1708,10 @@ async function confirmEndGame() {
 
 function _applyEndedGameUI() {
   // Lock out owner controls
-  document.getElementById('add-hand-btn').style.display = 'none';
-  document.getElementById('end-game-btn').style.display = 'none';
+  document.getElementById('add-hand-btn').style.display    = 'none';
+  document.getElementById('end-game-btn').style.display    = 'none';
   document.getElementById('add-player-section').style.display = 'none';
+  document.getElementById('share-btn').style.display       = 'none';
   // Show ended badge in title
   const titleEl = document.getElementById('game-title-text');
   if (titleEl && !titleEl.querySelector('.ended-badge')) {
@@ -1945,29 +1945,37 @@ async function adminOpenGame(gameId, userId) {
   // but displaying it normally — we just open the game as if we were that user
   loading(true);
   try {
-    const res  = await fetch(API + `/admin/game/${gameId}`, {
-      headers: { 'Authorization': `Bearer ${_adminPassword}` },
-    });
-    const game = await res.json();
-    if (!res.ok) throw new Error(game.error || 'Failed');
-
-    const boardRes  = await fetch(API + `/admin/game/${gameId}/scoreboard`, {
-      headers: { 'Authorization': `Bearer ${_adminPassword}` },
-    });
+    const adminHeaders = { 'Authorization': `Bearer ${_adminPassword}` };
+    const [gameRes, boardRes] = await Promise.all([
+      fetch(API + `/admin/game/${gameId}`, { headers: adminHeaders }),
+      fetch(API + `/admin/game/${gameId}/scoreboard`, { headers: adminHeaders }),
+    ]);
+    const game  = await gameRes.json();
     const board = await boardRes.json();
-    if (!boardRes.ok) throw new Error(board.error || 'Failed');
+    if (!gameRes.ok)  throw new Error(game.error  || 'Failed to load game');
+    if (!boardRes.ok) throw new Error(board.error || 'Failed to load scoreboard');
 
-    // Render as read-only view
     currentGame = { ...game, is_owner: false };
+    currentGame._lastBoard = board;
     _adminMode  = true;
+    _scoreboardCollapsed = false;
+    document.getElementById('scoreboard-full').style.display      = '';
+    document.getElementById('scoreboard-condensed').style.display = 'none';
+    const chevron = document.getElementById('scoreboard-chevron');
+    if (chevron) chevron.style.transform = '';
     document.getElementById('game-title-text').textContent      = game.name;
     document.getElementById('hand-game-breadcrumb').textContent  = game.name;
     _renderGameBreadcrumb(game.name);
     document.getElementById('add-hand-btn').style.display       = 'none';
+    document.getElementById('end-game-btn').style.display       = 'none';
     document.getElementById('add-player-section').style.display = 'none';
+    document.getElementById('settlement-panel').style.display   = 'none';
+    const titleEl = document.getElementById('game-title-text');
+    titleEl.querySelectorAll('.ended-badge').forEach(b => b.remove());
     document.getElementById('new-player-name').value = '';
     renderPlayerRoster(game.players, false, board);
     renderScoreboard(game.players, board);
+    if (!game.is_active) _applyEndedGameUI();
     showScreen('screen-game');
   } catch(e) { alert('Could not load game: ' + e.message); }
   finally { loading(false); }
