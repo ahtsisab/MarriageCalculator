@@ -1208,21 +1208,46 @@ function toggleAllowBetterGame() {
   if (lbl) lbl.textContent = _allowBetterGame ? 'On' : 'Off';
 }
 function setPlayerCount(n) {
+  const prev = selectedPlayerCount;
   selectedPlayerCount = n;
   document.querySelectorAll('.count-btn').forEach(b => b.classList.toggle('selected', parseInt(b.dataset.n) === n));
   const section = document.getElementById('player-names-section');
   section.style.display = 'block';
-  document.getElementById('player-inputs').innerHTML = Array.from({length: n}, (_, i) => `
-    <div class="player-input-row" style="flex-direction:column;align-items:stretch;gap:6px">
-      <div style="display:flex;gap:10px;align-items:center">
-        <span class="suit-badge">${SUITS[i]}</span>
-        <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off"
-          oninput="refreshSuggestionPills()">
-      </div>
-      <div id="inline-pills-${i}" style="display:none;flex-wrap:wrap;gap:4px;padding-left:38px"></div>
-    </div>`).join('');
+  const container = document.getElementById('player-inputs');
+
+  if (n > prev) {
+    // Add only the new rows needed, preserving existing ones
+    const newRows = Array.from({length: n - prev}, (_, j) => {
+      const i = prev + j;
+      return `<div class="player-input-row" style="flex-direction:column;align-items:stretch;gap:6px">
+        <div style="display:flex;gap:10px;align-items:center">
+          <span class="suit-badge">${SUITS[i]}</span>
+          <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off"
+            oninput="refreshSuggestionPills()">
+        </div>
+        <div id="inline-pills-${i}" style="display:none;flex-wrap:wrap;gap:4px;padding-left:38px"></div>
+      </div>`;
+    }).join('');
+    container.insertAdjacentHTML('beforeend', newRows);
+    document.getElementById(`pname-${prev}`)?.focus();
+  } else if (n < prev) {
+    // Remove extra rows from the end
+    const rows = container.querySelectorAll('.player-input-row');
+    for (let i = n; i < rows.length; i++) rows[i].remove();
+  } else if (prev === 0) {
+    // First time — render all rows
+    container.innerHTML = Array.from({length: n}, (_, i) => `
+      <div class="player-input-row" style="flex-direction:column;align-items:stretch;gap:6px">
+        <div style="display:flex;gap:10px;align-items:center">
+          <span class="suit-badge">${SUITS[i]}</span>
+          <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off"
+            oninput="refreshSuggestionPills()">
+        </div>
+        <div id="inline-pills-${i}" style="display:none;flex-wrap:wrap;gap:4px;padding-left:38px"></div>
+      </div>`).join('');
+    document.getElementById('pname-0')?.focus();
+  }
   refreshSuggestionPills();
-  document.getElementById('pname-0').focus();
 }
 // ── Player name suggestion pills ──────────────────────────────────────────────
 let _playerSuggestions = [];

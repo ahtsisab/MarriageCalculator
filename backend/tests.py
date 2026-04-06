@@ -423,6 +423,8 @@ class TestFrontend(unittest.TestCase):
         """Duplicate IDs break getElementById."""
         import re
         ids = re.findall(r'id="([^"]+)"', self.html)
+        # Exclude JS template literal IDs like pname-${i}
+        ids = [eid for eid in ids if '${' not in eid]
         seen = {}
         for eid in ids:
             seen[eid] = seen.get(eid, 0) + 1
