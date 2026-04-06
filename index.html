@@ -196,6 +196,10 @@ button {
 .btn-danger:hover { background: rgba(192,57,43,.1); }
 .btn-ghost { background: transparent; color: var(--text-dim); padding: 9px 12px; font-size: 11px; }
 .btn-ghost:hover { color: var(--text); }
+.btn-end    { border: 1px solid rgba(192,57,43,.4); color: var(--red-lt); }
+.btn-end:hover { background: rgba(192,57,43,.08); border-color: rgba(192,57,43,.6); }
+.btn-resume { border: 1px solid rgba(39,174,96,.35); color: var(--green-lt); }
+.btn-resume:hover { background: rgba(39,174,96,.08); border-color: rgba(39,174,96,.6); }
 .btn-sm { padding: 7px 14px; font-size: 11px; min-height: 36px; }
 .btn-full { width: 100%; }
 
@@ -797,8 +801,8 @@ body::before { display: none; }
       <h2 style="margin:0"><span class="suit">♥</span> <span id="game-title-text">Game</span></h2>
       <div style="display:flex;gap:8px">
         <button class="btn-secondary btn-sm" id="share-btn" onclick="showShareDialog()">Share</button>
-        <button class="btn-ghost btn-sm" id="end-game-btn" onclick="showEndGame()" style="color:var(--red-lt);border-color:rgba(192,57,43,.3)">End Game</button>
-        <button class="btn-ghost btn-sm" id="resume-game-header-btn" onclick="doResumeGame()" style="display:none;color:var(--green-lt);border-color:rgba(39,174,96,.3)">Resume</button>
+        <button class="btn-ghost btn-sm btn-end" id="end-game-btn" onclick="showEndGame()">End Game</button>
+        <button class="btn-ghost btn-sm btn-resume" id="resume-game-header-btn" onclick="doResumeGame()" style="display:none">Resume</button>
       </div>
     </div>
     <div class="card" style="margin-bottom:12px" data-suit="♣">
@@ -1221,9 +1225,8 @@ function _checkCreateGameReady() {
 
 function _checkHandReady() {
   const hasWinner = handEntries.some(e => e.is_winner);
-  const allMaal   = handEntries.every(e => e.status === 'unseen' || e.maal !== null);
   const btn = document.getElementById('finalize-hand-btn');
-  if (btn) btn.disabled = !(hasWinner && allMaal);
+  if (btn) btn.disabled = !hasWinner;
 }
 
 function setCurrency(sel) {

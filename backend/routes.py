@@ -437,11 +437,35 @@ def route_delete_hand(hand_id):
 
 # ── Admin ──────────────────────────────────────────────────────────────────────
 
+# Simple in-process rate limiter for admin endpoints
+import threading
+_admin_attempts: dict = {}  # ip -> [timestamp, ...]
+_admin_lock = threading.Lock()
+_ADMIN_MAX_ATTEMPTS = 10   # per window
+_ADMIN_WINDOW_SECS  = 300  # 5 minutes
+
+
+def _admin_rate_limited() -> bool:
+    """Return True if this IP has exceeded the admin attempt limit."""
+    ip = request.remote_addr or "unknown"
+    now = time.time()
+    with _admin_lock:
+        attempts = [t for t in _admin_attempts.get(ip, []) if now - t < _ADMIN_WINDOW_SECS]
+        attempts.append(now)
+        _admin_attempts[ip] = attempts
+        return len(attempts) > _ADMIN_MAX_ATTEMPTS
+
+
 def _require_admin():
+    if _admin_rate_limited():
+        return _err("Too many attempts. Try again later.", 429)
     admin_pw = os.environ.get("ADMIN_PASSWORD", "")
     if not admin_pw:
         return _err("Admin access not configured.", 503)
-    if request.headers.get("Authorization") != f"Bearer {admin_pw}":
+    # Use hmac.compare_digest to prevent timing attacks
+    provided = request.headers.get("Authorization", "")
+    expected = f"Bearer {admin_pw}"
+    if not hmac.compare_digest(provided, expected):
         return _err("Unauthorized.", 401)
 
 
