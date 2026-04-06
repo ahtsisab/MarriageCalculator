@@ -687,13 +687,13 @@ body::before { display: none; }
       </div>
 
       <!-- Game Options (collapsible) -->
-      <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px">
+      <div style="border:1px solid var(--gold-dim);border-radius:8px;overflow:hidden;margin-bottom:14px;background:rgba(201,168,76,.03)">
         <div onclick="toggleGameOptions()"
-             style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;background:var(--surface2);user-select:none">
-          <span style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim)">Game Options</span>
-          <span id="game-options-chevron" style="font-size:12px;color:var(--text-mute);transition:transform .2s">▸</span>
+             style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;user-select:none;background:rgba(201,168,76,.06)">
+          <span style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--gold-dim)">⚙ Game Options</span>
+          <span id="game-options-chevron" style="font-size:12px;color:var(--gold-dim);transition:transform .2s">▸</span>
         </div>
-        <div id="game-options-body" style="display:none;padding:14px;border-top:1px solid var(--border)">
+        <div id="game-options-body" style="display:none;padding:14px;border-top:1px solid var(--gold-dim)">
 
           <!-- Stake -->
           <div class="field" style="margin-bottom:12px">
@@ -1213,10 +1213,13 @@ function setPlayerCount(n) {
   const section = document.getElementById('player-names-section');
   section.style.display = 'block';
   document.getElementById('player-inputs').innerHTML = Array.from({length: n}, (_, i) => `
-    <div class="player-input-row">
-      <span class="suit-badge">${SUITS[i]}</span>
-      <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off"
-        oninput="refreshSuggestionPills()">
+    <div class="player-input-row" style="flex-direction:column;align-items:stretch;gap:6px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <span class="suit-badge">${SUITS[i]}</span>
+        <input type="text" placeholder="Player ${i+1} name" id="pname-${i}" autocomplete="off"
+          oninput="refreshSuggestionPills()">
+      </div>
+      <div id="inline-pills-${i}" style="display:none;flex-wrap:wrap;gap:4px;padding-left:38px"></div>
     </div>`).join('');
   refreshSuggestionPills();
   document.getElementById('pname-0').focus();
@@ -1231,47 +1234,52 @@ async function loadPlayerSuggestions() {
 }
 
 function refreshSuggestionPills() {
+  // Hide the old global pills container
   const container = document.getElementById('suggestion-pills');
-  const pillList  = document.getElementById('suggestion-pill-list');
-  if (!container || !pillList || !_playerSuggestions.length) {
-    if (container) container.style.display = 'none';
-    return;
-  }
+  if (container) container.style.display = 'none';
 
-  const used = new Set(
-    Array.from({length: selectedPlayerCount}, (_, i) =>
-      (document.getElementById(`pname-${i}`)?.value || '').trim().toLowerCase()
-    ).filter(Boolean)
+  if (!_playerSuggestions.length || !selectedPlayerCount) return;
+
+  // Collect all currently entered names
+  const entered = Array.from({length: selectedPlayerCount}, (_, i) =>
+    (document.getElementById(`pname-${i}`)?.value || '').trim().toLowerCase()
   );
 
-  // All inputs filled — grey all pills
-  const allFilled = selectedPlayerCount > 0 &&
-    Array.from({length: selectedPlayerCount}, (_, i) =>
-      !!(document.getElementById(`pname-${i}`)?.value || '').trim()
-    ).every(Boolean);
+  // For each slot, show suggestions not used in any other slot
+  for (let i = 0; i < selectedPlayerCount; i++) {
+    const row = document.getElementById(`inline-pills-${i}`);
+    if (!row) continue;
 
-  pillList.innerHTML = _playerSuggestions.map(name => {
-    const isUsed = used.has(name.toLowerCase()) || allFilled;
-    return `<button class="suggestion-pill ${isUsed ? 'used' : ''}"
-      onclick="pickSuggestionPill('${esc(name)}')">${esc(name)}</button>`;
-  }).join('');
+    const thisVal  = entered[i];
+    const otherVals = entered.filter((_, j) => j !== i);
+    const matches  = _playerSuggestions.filter(name => {
+      const lower = name.toLowerCase();
+      return !otherVals.includes(lower) && lower !== thisVal;
+    });
 
-  container.style.display = 'block';
+    if (!matches.length || thisVal) {
+      // Hide when slot is filled or no suggestions
+      row.style.display = 'none';
+      row.innerHTML = '';
+    } else {
+      row.style.display = 'flex';
+      row.innerHTML = matches.map(name =>
+        `<button class="suggestion-pill" style="font-size:11px;padding:3px 9px"
+          onclick="pickSuggestionPill(${i}, '${esc(name)}')">${esc(name)}</button>`
+      ).join('');
+    }
+  }
 }
 
-function pickSuggestionPill(name) {
-  if (!selectedPlayerCount) {
-    showError('new-game-error', 'Please select the number of players first.');
-    return;
-  }
-  for (let i = 0; i < selectedPlayerCount; i++) {
-    const inp = document.getElementById(`pname-${i}`);
-    if (inp && !inp.value.trim()) {
-      inp.value = name;
-      refreshSuggestionPills();
-      const next = document.getElementById(`pname-${i + 1}`);
-      if (next && !next.value.trim()) next.focus();
-      return;
+function pickSuggestionPill(idx, name) {
+  const inp = document.getElementById(`pname-${idx}`);
+  if (inp) {
+    inp.value = name;
+    refreshSuggestionPills();
+    // Move focus to next empty slot
+    for (let i = idx + 1; i < selectedPlayerCount; i++) {
+      const next = document.getElementById(`pname-${i}`);
+      if (next && !next.value.trim()) { next.focus(); break; }
     }
   }
 }
