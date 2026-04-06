@@ -12,7 +12,7 @@ from game_model import (create_game, list_games, get_game, get_scoreboard,
                          get_game_members, user_can_access,
                          rename_player, delete_player)
 from hand_model import finalize_hand, get_hand
-from user_model import register, login
+from user_model import register, login, change_pin
 from database import get_connection
 
 api = Blueprint("api", __name__, url_prefix="/api")
@@ -128,6 +128,17 @@ def route_login():
 @api.post("/auth/logout")
 def route_logout():
     return jsonify({"ok": True})  # stateless — client discards token
+
+
+@api.post("/auth/change-pin")
+def route_change_pin():
+    if (e := _require_auth()): return e
+    data = request.get_json(force=True)
+    try:
+        change_pin(_uid(), data.get("current_pin", ""), data.get("new_pin", ""))
+    except ValueError as e:
+        return _err(str(e))
+    return jsonify({"ok": True})
 
 
 @api.get("/auth/me")

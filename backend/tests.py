@@ -448,7 +448,7 @@ class TestFrontend(unittest.TestCase):
             # Admin
             "screen-admin", "admin-user-list",
             # Theme / user
-            "user-badge-wrap", "theme-btn",
+            "user-badge-wrap", "theme-btn", "change-pin-overlay", "change-pin-current", "change-pin-new", "change-pin-confirm", "change-pin-error",
         ]
         import re
         found_ids = set(re.findall(r'id="([^"]+)"', self.html))
@@ -502,6 +502,8 @@ class TestFrontend(unittest.TestCase):
             "esc", "fmtDate", "ptsClass", "applyTheme", "toggleTheme",
             # Delete/leave
             "promptDelete", "confirmDelete", "promptLeave",
+            "showChangePinDialog", "closeChangePinDialog", "doChangePin",
+            "toggleUserMenu", "closeUserMenu",
         ]
         import re
         defined = set(re.findall(r'function\s+(\w+)\s*\(', self.js))

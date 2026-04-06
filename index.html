@@ -122,19 +122,48 @@ header {
 [data-theme="dark"] .theme-switch-track::after { transform: translateX(16px); background: #fff; }
 
 /* ── User badge in header ── */
-.user-badge {
-  font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim);
-  display: flex; align-items: center; gap: 6px;
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 20px; padding: 5px 10px; white-space: nowrap;
+.user-menu-wrap { position: relative; }
+.user-avatar-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--gold-dim); border: 1.5px solid var(--gold-dim);
+  color: var(--gold-lt); font-family: 'Playfair Display', serif;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 0; padding: 0; text-transform: none; letter-spacing: 0;
+  transition: border-color .15s, background .15s;
 }
-.user-badge .user-name { color: var(--gold); max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
-.user-badge .logout-btn {
-  background: none; border: none; font-size: 12px; color: var(--text-mute);
-  cursor: pointer; padding: 0; min-height: 0; letter-spacing: 0; text-transform: none;
-  transition: color .12s;
+.user-avatar-btn:hover { border-color: var(--gold); background: rgba(201,168,76,.25); }
+.user-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; min-width: 160px; z-index: 200;
+  box-shadow: var(--shadow); overflow: hidden;
+  display: none;
 }
-.user-badge .logout-btn:hover { color: var(--red-lt); }
+.user-dropdown.open { display: block; animation: fadeIn .12s ease; }
+.user-dropdown-header {
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-mute);
+}
+.user-dropdown-name {
+  font-family: 'Playfair Display', serif; font-size: 14px;
+  color: var(--gold-lt); text-transform: none; letter-spacing: 0;
+  margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.user-dropdown-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; cursor: pointer; transition: background .12s;
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  color: var(--text-dim); letter-spacing: .5px; text-transform: none;
+  border: none; background: none; width: 100%; text-align: left;
+  min-height: 0;
+}
+.user-dropdown-item:hover { background: var(--surface2); color: var(--text); }
+.user-dropdown-item.danger { color: var(--red-lt); }
+.user-dropdown-item.danger:hover { background: rgba(192,57,43,.08); }
+.user-dropdown-item .item-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
 
 /* ── Screens ── */
 .screen { display: none; animation: fadeIn .2s ease; }
@@ -929,6 +958,29 @@ body::before { display: none; }
     </div>
   </div>
 </div>
+<div id="change-pin-overlay" class="dialog-overlay">
+  <div class="dialog-box">
+    <div class="dialog-title">Change PIN</div>
+    <div class="field">
+      <label>Current PIN</label>
+      <input type="password" id="change-pin-current" placeholder="Current PIN" autocomplete="current-password" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>New PIN</label>
+      <input type="password" id="change-pin-new" placeholder="New PIN" autocomplete="new-password" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>Confirm New PIN</label>
+      <input type="password" id="change-pin-confirm" placeholder="Confirm new PIN" autocomplete="new-password" inputmode="numeric">
+    </div>
+    <div id="change-pin-error" class="error-msg"></div>
+    <div id="change-pin-success" class="success-msg"></div>
+    <div class="dialog-actions" style="margin-top:12px">
+      <button class="btn-ghost" onclick="closeChangePinDialog()">Cancel</button>
+      <button class="btn-primary" onclick="doChangePin()">Save PIN</button>
+    </div>
+  </div>
+</div>
 <div id="join-dialog-overlay" class="dialog-overlay">
   <div class="dialog-box">
     <div class="dialog-title">Join a Game</div>
@@ -1085,13 +1137,72 @@ function esc(s) {
 function renderUserBadge() {
   const wrap = document.getElementById('user-badge-wrap');
   if (!currentUser) { wrap.innerHTML = ''; return; }
+  const initial = currentUser.name.charAt(0).toUpperCase();
   wrap.innerHTML = `
-    <div class="user-badge">
-      ${currentUser.is_admin ? `<button class="admin-link" onclick="openAdminDialog()" title="Admin">⚙</button>` : ''}
-      <span class="user-name">${esc(currentUser.name)}</span>
-      <button class="logout-btn" onclick="doLogout()" title="Sign out">✕</button>
+    <div class="user-menu-wrap" id="user-menu-wrap">
+      <button class="user-avatar-btn" onclick="toggleUserMenu()" title="${esc(currentUser.name)}">${initial}</button>
+      <div class="user-dropdown" id="user-dropdown">
+        <div class="user-dropdown-header">
+          Signed in as
+          <div class="user-dropdown-name">${esc(currentUser.name)}</div>
+        </div>
+        ${currentUser.is_admin ? `
+        <button class="user-dropdown-item" onclick="closeUserMenu();openAdminDialog()">
+          <span class="item-icon">⚙</span> Admin Panel
+        </button>` : ''}
+        <button class="user-dropdown-item" onclick="closeUserMenu();showChangePinDialog()">
+          <span class="item-icon">🔑</span> Change PIN
+        </button>
+        <button class="user-dropdown-item danger" onclick="closeUserMenu();doLogout()">
+          <span class="item-icon">↩</span> Sign Out
+        </button>
+      </div>
     </div>`;
 }
+
+function toggleUserMenu() {
+  document.getElementById('user-dropdown')?.classList.toggle('open');
+}
+function closeUserMenu() {
+  document.getElementById('user-dropdown')?.classList.remove('open');
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', e => {
+  if (!document.getElementById('user-menu-wrap')?.contains(e.target)) {
+    closeUserMenu();
+  }
+});
+
+function showChangePinDialog() {
+  document.getElementById('change-pin-current').value = '';
+  document.getElementById('change-pin-new').value = '';
+  document.getElementById('change-pin-confirm').value = '';
+  document.getElementById('change-pin-error').classList.remove('visible');
+  document.getElementById('change-pin-success').classList.remove('visible');
+  document.getElementById('change-pin-overlay').classList.add('visible');
+  setTimeout(() => document.getElementById('change-pin-current').focus(), 80);
+}
+function closeChangePinDialog() {
+  document.getElementById('change-pin-overlay').classList.remove('visible');
+}
+async function doChangePin() {
+  const current = document.getElementById('change-pin-current').value.trim();
+  const newPin  = document.getElementById('change-pin-new').value.trim();
+  const confirm = document.getElementById('change-pin-confirm').value.trim();
+  if (newPin !== confirm) { showError('change-pin-error', 'New PINs do not match.'); return; }
+  loading(true);
+  try {
+    await apiFetch('/auth/change-pin', { method: 'POST', body: JSON.stringify({ current_pin: current, new_pin: newPin }) });
+    document.getElementById('change-pin-success').textContent = '✓ PIN changed.';
+    document.getElementById('change-pin-success').classList.add('visible');
+    setTimeout(() => closeChangePinDialog(), 1200);
+  } catch(e) { showError('change-pin-error', e.message); }
+  finally { loading(false); }
+}
+document.getElementById('change-pin-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeChangePinDialog();
+});
 
 function switchAuthTab(tab) {
   document.getElementById('auth-login-form').style.display    = tab === 'login'    ? '' : 'none';
