@@ -53,11 +53,12 @@ def create_game(name: str, player_names: list[str], user_id: int | None = None,
     conn = get_connection()
     cur  = conn.cursor()
 
+    join_code = _unique_join_code(cur)
     game = insert_returning(
         cur, conn,
-        sql_pg="INSERT INTO games (name, user_id, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, name, created_at, user_id, join_code, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen",
-        sql_sqlite="INSERT INTO games (name, user_id, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-        params=(name, user_id, stake_per_point, currency, _bool_val(allow_better_game), penalty_seen, penalty_unseen),
+        sql_pg="INSERT INTO games (name, user_id, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen, join_code) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, name, created_at, user_id, join_code, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen",
+        sql_sqlite="INSERT INTO games (name, user_id, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen, join_code) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+        params=(name, user_id, stake_per_point, currency, _bool_val(allow_better_game), penalty_seen, penalty_unseen, join_code),
     )
     game["players"]  = []
     game["is_owner"] = True
