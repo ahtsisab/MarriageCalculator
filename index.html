@@ -1103,7 +1103,7 @@ function showScreen(id) {
     if (cgBtn) cgBtn.disabled = true;
     loadPlayerSuggestions();  // prefetch, won't render until player count is chosen
   }
-  if (id !== 'screen-game') _stopAutoRefresh();
+  if (id !== 'screen-game') { _stopAutoRefresh(); _lastOpenedGameId = null; }
 }
 function loading(on) { document.getElementById('loading-overlay').classList.toggle('visible', on); }
 function showError(elId, msg) {
@@ -1483,11 +1483,15 @@ async function openGame(gameId) {
     currentGame = game;
     currentGame._lastBoard = board;
     _adminMode  = false;
-    _scoreboardCollapsed = false;
-    document.getElementById('scoreboard-full').style.display      = '';
-    document.getElementById('scoreboard-condensed').style.display = 'none';
-    const chevron = document.getElementById('scoreboard-chevron');
-    if (chevron) chevron.style.transform = '';
+    // Only reset collapsed state when opening a fresh/different game
+    if (game.id !== _lastOpenedGameId) {
+      _scoreboardCollapsed = false;
+      document.getElementById('scoreboard-full').style.display      = '';
+      document.getElementById('scoreboard-condensed').style.display = 'none';
+      const chevron = document.getElementById('scoreboard-chevron');
+      if (chevron) chevron.style.transform = '';
+    }
+    _lastOpenedGameId = game.id;
     const isOwner = !!game.is_owner;
 
     document.getElementById('game-title-text').textContent     = game.name;
@@ -1556,14 +1560,30 @@ async function _refreshGameView() {
 }
 
 async function togglePlayerActive(pid, currently) {
-  loading(true);
+  // Optimistic: flip immediately in local state and re-render
+  const p = currentGame.players.find(p => p.id === pid);
+  if (!p) return;
+  const newActive = !currently;
+
+  // Enforce min-3-active rule client-side before optimistic flip
+  const activeCount = currentGame.players.filter(p => p.is_active).length;
+  if (currently && activeCount <= 3) { showError('add-player-error', 'At least 3 players must be active.'); return; }
+  if (!currently && activeCount >= 6) { showError('add-player-error', 'Maximum 6 active players.'); return; }
+
+  p.is_active = newActive;
+  renderPlayerRoster(currentGame.players, !!currentGame.is_owner && !!currentGame.is_active, currentGame._lastBoard);
+
+  // Background sync
   try {
-    const player = await apiFetch(`/players/${pid}`, { method:'PATCH', body: JSON.stringify({ is_active: !currently }) });
-    const p = currentGame.players.find(p => p.id === pid);
-    if (p) p.is_active = player.is_active;
-    await _refreshGameView();
-  } catch(e) { showError('add-player-error', e.message); }
-  finally { loading(false); }
+    const updated = await apiFetch(`/players/${pid}`, { method:'PATCH', body: JSON.stringify({ is_active: newActive }) });
+    p.is_active = updated.is_active; // confirm from server
+    renderPlayerRoster(currentGame.players, !!currentGame.is_owner && !!currentGame.is_active, currentGame._lastBoard);
+  } catch(e) {
+    // Roll back
+    p.is_active = currently;
+    renderPlayerRoster(currentGame.players, !!currentGame.is_owner && !!currentGame.is_active, currentGame._lastBoard);
+    _showSyncError(e.message);
+  }
 }
 
 function startRenamePlayer(pid, currentName) {
@@ -1646,6 +1666,7 @@ function _stopAutoRefresh() {
 }
 
 let _scoreboardCollapsed = false;
+let _lastOpenedGameId    = null;
 
 function toggleScoreboardCollapse() {
   _scoreboardCollapsed = !_scoreboardCollapsed;
@@ -1859,6 +1880,46 @@ function setMaal(idx, val) {
 }
 let _editingHandId = null;
 
+// ── Optimistic sync queue ─────────────────────────────────────────────────────
+// Hands are submitted optimistically: UI updates immediately, server sync
+// happens in the background. A sequential queue ensures hand ordering is
+// preserved even if the user submits another hand before the first syncs.
+let _syncQueue = Promise.resolve();  // chain of sequential server submissions
+let _syncError = null;               // pending sync error banner el
+
+function _showSyncError(msg) {
+  let banner = document.getElementById('sync-error-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'sync-error-banner';
+    banner.style.cssText = `position:fixed;bottom:80px;left:16px;right:16px;z-index:300;
+      background:rgba(192,57,43,.95);color:#fff;border-radius:8px;padding:12px 14px;
+      font-family:'DM Mono',monospace;font-size:12px;display:flex;align-items:center;
+      justify-content:space-between;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,.4)`;
+    document.body.appendChild(banner);
+  }
+  banner.innerHTML = `<span>⚠ Sync failed: ${esc(msg)}</span>
+    <button onclick="document.getElementById('sync-error-banner').remove()"
+      style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;min-height:0;padding:0">✕</button>`;
+}
+
+// Compute points locally using same formula as server
+function _computePointsLocally(entries, betterGame, penaltySeen, penaltyUnseen) {
+  const active = entries.filter(e => e.status !== 'unseen');
+  const totalMaal = active.reduce((s, e) => s + (e.maal ?? 0), 0);
+  const n = entries.length;
+  const result = entries.map(e => {
+    if (e.is_winner) return { ...e, points: 0 };
+    const penalty = e.status === 'seen' ? penaltySeen : e.status === 'unseen' ? penaltyUnseen : 0;
+    const maal = e.status === 'unseen' ? 0 : (e.maal ?? 0);
+    return { ...e, maal, points: -1 * (totalMaal + penalty - maal * n) };
+  });
+  const winnerIdx = result.findIndex(e => e.is_winner);
+  result[winnerIdx].points = -result.reduce((s, e, i) => i === winnerIdx ? s : s + e.points, 0);
+  if (betterGame) result.forEach(e => { e.points *= 2; });
+  return result;
+}
+
 function editLastHand(handId) {
   // Find the hand data in the current board
   const board = currentGame._lastBoard;
@@ -1910,24 +1971,76 @@ function goToCurrentGame() { if (currentGame) openGame(currentGame.id); else sho
 async function finalizeHand() {
   handEntries.forEach((e, i) => { const inp = document.getElementById(`maal-${i}`); if (inp) { const n=parseInt(inp.value,10); e.maal = (inp.value===''||isNaN(n)||n<0) ? null : n; } });
   if (!handEntries.some(e => e.is_winner)) { showError('add-hand-error', 'Please select a winner.'); return; }
-  loading(true);
-  try {
-    const payload = {
-      better_game: isBetterGame,
-      entries: handEntries.map(e => ({ player_id:e.player_id, status:e.status, maal: e.maal ?? 0, is_winner:e.is_winner })),
-    };
-    if (_editingHandId) {
-      // Delete old hand first, then post new one
-      await apiFetch(`/hands/${_editingHandId}`, { method: 'DELETE' });
-      _editingHandId = null;
+
+  const editingId  = _editingHandId;
+  _editingHandId   = null;
+  const gameId     = currentGame.id;
+  const payload    = {
+    better_game: isBetterGame,
+    entries: handEntries.map(e => ({ player_id:e.player_id, status:e.status, maal: e.maal ?? 0, is_winner:e.is_winner })),
+  };
+
+  // ── Optimistic update ──────────────────────────────────────────────────────
+  // Compute points locally and patch the board immediately
+  const scored = _computePointsLocally(
+    handEntries.map(e => ({ ...e, maal: e.maal ?? 0 })),
+    isBetterGame,
+    currentGame.penalty_seen   ?? 3,
+    currentGame.penalty_unseen ?? 10,
+  );
+  const board = currentGame._lastBoard || { hands: [], totals: {} };
+  const nextHandNum = (board.hands.length ? Math.max(...board.hands.map(h => h.hand_number)) : 0) + 1;
+
+  // Remove old hand if editing
+  if (editingId) board.hands = board.hands.filter(h => h.id !== editingId);
+
+  const optimisticHand = {
+    id: `opt-${Date.now()}`, hand_number: nextHandNum,
+    better_game: isBetterGame, played_at: new Date().toISOString(),
+    entries: scored.map(e => ({
+      player_id: e.player_id, player_name: e.name,
+      status: e.status, maal: e.maal, points: e.points, is_winner: e.is_winner,
+    })),
+    _optimistic: true,
+  };
+  board.hands.push(optimisticHand);
+  scored.forEach(e => {
+    board.totals[e.player_id] = (board.totals[e.player_id] ?? 0) + e.points;
+    if (editingId) {
+      // Undo the old hand's contribution — we don't have it, so refresh will fix
     }
-    await apiFetch(`/games/${currentGame.id}/hands`, { method:'POST', body: JSON.stringify(payload) });
-    showSuccess('add-hand-success', `✓ Hand saved${isBetterGame ? ' (Better Game — 2×)' : ''}!`);
-    // Reset title
-    document.querySelector('#screen-add-hand h2').innerHTML = `<span class="suit">♦</span> Add Hand`;
-    setTimeout(() => goToCurrentGame(), 800);
-  } catch(e) { showError('add-hand-error', e.message); }
-  finally { loading(false); }
+  });
+  currentGame._lastBoard = board;
+
+  // Navigate immediately — user sees result now
+  document.querySelector('#screen-add-hand h2').innerHTML = `<span class="suit">♦</span> Add Hand`;
+  goToCurrentGame();
+
+  // ── Background sync (sequential queue) ────────────────────────────────────
+  _syncQueue = _syncQueue.then(async () => {
+    try {
+      if (editingId) await apiFetch(`/hands/${editingId}`, { method: 'DELETE' });
+      await apiFetch(`/games/${gameId}/hands`, { method:'POST', body: JSON.stringify(payload) });
+      // Server confirmed — quietly refresh to get canonical data
+      if (currentGame?.id === gameId) {
+        const fresh = await apiFetch(`/games/${gameId}/scoreboard`);
+        currentGame._lastBoard = fresh;
+        if (document.getElementById('screen-game')?.classList.contains('active')) {
+          renderScoreboard(currentGame.players, fresh);
+        }
+      }
+    } catch(err) {
+      // Roll back optimistic hand from board
+      if (currentGame?.id === gameId && currentGame._lastBoard) {
+        currentGame._lastBoard.hands = currentGame._lastBoard.hands.filter(h => h.id !== optimisticHand.id);
+        scored.forEach(e => { currentGame._lastBoard.totals[e.player_id] = (currentGame._lastBoard.totals[e.player_id] ?? 0) - e.points; });
+        if (document.getElementById('screen-game')?.classList.contains('active')) {
+          renderScoreboard(currentGame.players, currentGame._lastBoard);
+        }
+      }
+      _showSyncError(err.message);
+    }
+  });
 }
 
 // ── End Game / Settlement ─────────────────────────────────────────────────────
