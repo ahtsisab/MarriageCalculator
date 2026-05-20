@@ -1968,6 +1968,15 @@ function editLastHand(handId) {
 
 function goToCurrentGame() { if (currentGame) openGame(currentGame.id); else showScreen('screen-home'); }
 
+// Use this after optimistic updates — switches to game screen without a full reload
+function goToCurrentGameInPlace() {
+  if (!currentGame) { showScreen('screen-home'); return; }
+  const canEdit = !!currentGame.is_owner && !!currentGame.is_active;
+  renderPlayerRoster(currentGame.players, canEdit, currentGame._lastBoard);
+  renderScoreboard(currentGame.players, currentGame._lastBoard);
+  showScreen('screen-game');
+}
+
 async function finalizeHand() {
   handEntries.forEach((e, i) => { const inp = document.getElementById(`maal-${i}`); if (inp) { const n=parseInt(inp.value,10); e.maal = (inp.value===''||isNaN(n)||n<0) ? null : n; } });
   if (!handEntries.some(e => e.is_winner)) { showError('add-hand-error', 'Please select a winner.'); return; }
@@ -2014,7 +2023,7 @@ async function finalizeHand() {
 
   // Navigate immediately — user sees result now
   document.querySelector('#screen-add-hand h2').innerHTML = `<span class="suit">♦</span> Add Hand`;
-  goToCurrentGame();
+  goToCurrentGameInPlace();
 
   // ── Background sync (sequential queue) ────────────────────────────────────
   _syncQueue = _syncQueue.then(async () => {
