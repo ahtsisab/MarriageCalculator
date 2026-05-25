@@ -448,10 +448,9 @@ label {
 .score-table td { padding: 9px 10px; text-align: center; border-bottom: 1px solid var(--border); font-family: 'Playfair Display', serif; font-size: 15px; }
 .score-table .hand-label { font-family: 'Lora', serif; font-size: 13px; color: var(--text-dim); text-align: left; white-space: nowrap; }
 .score-table tfoot td { border-top: 2px solid var(--border); border-bottom: none; font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; padding: 11px 10px; }
-.pts-pos, .score-table .pts-pos { color: var(--green-lt); }
-.pts-neg, .score-table .pts-neg { color: var(--red-lt); }
-.pts-zero, .score-table .pts-zero { color: var(--text-dim); }
-.total-best { color: var(--gold) !important; }
+.pts-pos, .score-table .pts-pos { color: var(--green-lt) !important; }
+.pts-neg, .score-table .pts-neg { color: var(--red-lt) !important; }
+.pts-zero, .score-table .pts-zero { color: var(--text-dim) !important; }
 .winner-icon { font-size: 11px; }
 .unseen-icon { font-size: 11px; opacity: .7; }
 .better-badge { font-family: 'DM Mono', monospace; font-size: 9px; background: rgba(201,168,76,.15); border: 1px solid var(--gold-dim); color: var(--gold); border-radius: 3px; padding: 1px 4px; margin-left: 3px; vertical-align: middle; }
@@ -686,13 +685,13 @@ body::before { display: none; }
         <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">New User</button>
       </div>
       <div id="auth-login-form">
-        <div class="field"><label>Your Name</label><input type="text" id="login-name" placeholder="e.g. Ramesh" autocomplete="username"></div>
+        <div class="field"><label>Your Name</label><input type="text" id="login-name" placeholder="" autocomplete="username"></div>
         <div class="field"><label>4-Digit PIN</label><input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="pin-input" id="login-pin" placeholder="••••" autocomplete="current-password"></div>
         <div id="login-error" class="error-msg"></div>
         <button class="btn-primary btn-full" onclick="doLogin()" style="margin-top:4px">Sign In</button>
       </div>
       <div id="auth-register-form" style="display:none">
-        <div class="field"><label>Choose a Name</label><input type="text" id="reg-name" placeholder="e.g. Ramesh" autocomplete="username"></div>
+        <div class="field"><label>Choose a Name</label><input type="text" id="reg-name" placeholder="" autocomplete="username"></div>
         <div class="field"><label>Choose a 4-Digit PIN</label><input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="pin-input" id="reg-pin" placeholder="••••" autocomplete="new-password"></div>
         <div class="field"><label>Confirm PIN</label><input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="pin-input" id="reg-pin2" placeholder="••••" autocomplete="new-password"></div>
         <div id="reg-error" class="error-msg"></div>
@@ -1694,7 +1693,7 @@ function renderCondensedScoreboard(players, board) {
   const maxT = Math.max(...players.map(p => totals[p.id] ?? 0));
   const totalCells = players.map(p => {
     const t   = totals[p.id] ?? 0;
-    const cls = [ptsClass(t), t === maxT && t > 0 ? 'total-best' : ''].filter(Boolean).join(' ');
+    const cls = ptsClass(t);
     const money = stake2 > 0
       ? `<div style="font-family:'DM Mono',monospace;font-size:10px;opacity:.7;margin-top:1px">${t >= 0 ? sym2 : '-'+sym2}${Math.abs(t * stake2).toFixed(2)}</div>`
       : '';
@@ -1755,7 +1754,7 @@ function renderScoreboard(players, board) {
   const maxT = Math.max(...players.map(p => totals[p.id] ?? 0));
   const totalCells = players.map(p => {
     const t   = totals[p.id] ?? 0;
-    const cls = [ptsClass(t), t === maxT && t > 0 ? 'total-best' : ''].filter(Boolean).join(' ');
+    const cls = ptsClass(t);
     const money = stake > 0
       ? `<div style="font-family:'DM Mono',monospace;font-size:10px;opacity:.7;margin-top:1px">${t >= 0 ? sym : '-'+sym}${Math.abs(t * stake).toFixed(2)}</div>`
       : '';
