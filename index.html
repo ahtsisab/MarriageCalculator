@@ -448,7 +448,9 @@ label {
 .score-table td { padding: 9px 10px; text-align: center; border-bottom: 1px solid var(--border); font-family: 'Playfair Display', serif; font-size: 15px; }
 .score-table .hand-label { font-family: 'Lora', serif; font-size: 13px; color: var(--text-dim); text-align: left; white-space: nowrap; }
 .score-table tfoot td { border-top: 2px solid var(--border); border-bottom: none; font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; padding: 11px 10px; }
-.pts-pos { color: var(--green-lt); } .pts-neg { color: var(--red-lt); } .pts-zero { color: var(--text-dim); }
+.pts-pos, .score-table .pts-pos { color: var(--green-lt); }
+.pts-neg, .score-table .pts-neg { color: var(--red-lt); }
+.pts-zero, .score-table .pts-zero { color: var(--text-dim); }
 .total-best { color: var(--gold) !important; }
 .winner-icon { font-size: 11px; }
 .unseen-icon { font-size: 11px; opacity: .7; }
