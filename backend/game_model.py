@@ -78,6 +78,19 @@ def create_game(name: str, player_names: list[str], user_id: int | None = None,
     return game
 
 
+def update_game_settings(game_id: int, currency: str, stake_per_point: float,
+                            allow_better_game: bool) -> None:
+    """Update editable game settings (currency, stake, better game flag)."""
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute(
+        "UPDATE games SET currency = %s, stake_per_point = %s, allow_better_game = %s WHERE id = %s",
+        (currency, stake_per_point, _bool_val(allow_better_game), game_id),
+    )
+    conn.commit()
+    cur.close(); conn.close()
+
+
 def resume_game(game_id: int) -> None:
     """Mark a game as active again (is_active = True)."""
     conn = get_connection()

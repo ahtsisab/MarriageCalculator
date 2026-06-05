@@ -448,6 +448,8 @@ label {
 .score-table td { padding: 9px 10px; text-align: center; border-bottom: 1px solid var(--border); font-family: 'Playfair Display', serif; font-size: 15px; }
 .score-table .hand-label { font-family: 'Lora', serif; font-size: 13px; color: var(--text-dim); text-align: left; white-space: nowrap; }
 .score-table tfoot td { border-top: 2px solid var(--border); border-bottom: none; font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; padding: 11px 10px; }
+.u-mono { font-family: 'DM Mono', monospace; }
+.u-serif { font-family: 'Playfair Display', serif; }
 .pts-pos, .score-table .pts-pos { color: var(--green-lt) !important; }
 .pts-neg, .score-table .pts-neg { color: var(--red-lt) !important; }
 .pts-zero, .score-table .pts-zero { color: var(--text-dim) !important; }
@@ -831,7 +833,7 @@ body::before { display: none; }
       <h2 style="margin:0"><span class="suit">♥</span> <span id="game-title-text">Game</span></h2>
       <div style="display:flex;gap:8px">
         <button class="btn-secondary btn-sm" id="share-btn" onclick="showShareDialog()">Share</button>
-        <button class="btn-ghost btn-sm" id="game-settings-btn" onclick="showGameSettings()" style="display:none" title="Game Settings">⚙</button>
+        <button class="btn-ghost btn-sm" id="game-settings-btn" onclick="showGameSettings()" style="display:none">Settings</button>
         <button class="btn-ghost btn-sm btn-end" id="end-game-btn" onclick="showEndGame()">End Game</button>
         <button class="btn-ghost btn-sm btn-resume" id="resume-game-header-btn" onclick="doResumeGame()" style="display:none">Resume</button>
       </div>
@@ -1104,6 +1106,9 @@ body::before { display: none; }
 <script>
 // ── Config ────────────────────────────────────────────────────────────────────
 const API = 'https://marriagecalculator-production.up.railway.app/api';
+const STORAGE_TOKEN = 'mc-token';
+const STORAGE_THEME = 'mc-theme';
+const STORAGE_ADMIN = 'mc-admin-pw';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentGame      = null;
@@ -1125,14 +1130,14 @@ function _renderGameBreadcrumb(gameName) {
 // ── Theme ─────────────────────────────────────────────────────────────────────
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('mc-theme', theme);
+  localStorage.setItem(STORAGE_THEME, theme);
 }
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme');
   applyTheme(current === 'dark' ? 'light' : 'dark');
 }
 // Apply saved theme immediately
-applyTheme(localStorage.getItem('mc-theme') || 'dark');
+applyTheme(localStorage.getItem(STORAGE_THEME) || 'dark');
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function showScreen(id) {
@@ -1181,7 +1186,7 @@ function showSuccess(elId, msg) {
   el.textContent = msg; el.classList.add('visible');
 }
 async function apiFetch(url, opts = {}) {
-  const token = localStorage.getItem('mc-token');
+  const token = localStorage.getItem(STORAGE_TOKEN);
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(API + url, { headers, ...opts });
@@ -1277,7 +1282,7 @@ function switchAuthTab(tab) {
 }
 
 function _handleAuthResponse(resp) {
-  localStorage.setItem('mc-token', resp.token);
+  localStorage.setItem(STORAGE_TOKEN, resp.token);
   currentUser = { id: resp.id, name: resp.name, is_admin: !!resp.is_admin };
   renderUserBadge();
   showScreen('screen-home');
@@ -1308,7 +1313,7 @@ async function doRegister() {
 }
 
 async function doLogout() {
-  localStorage.removeItem('mc-token');
+  localStorage.removeItem(STORAGE_TOKEN);
   currentUser = null;
   renderUserBadge();
   showScreen('screen-auth');
@@ -1519,7 +1524,7 @@ async function createGame() {
     seen.add(v.toLowerCase());
     players.push(v);
   }
-  const stake          = parseFloat(document.getElementById('stake-input')?.value || '0') || 0;
+  const stake          = parseFloat(document.getElementById('stake-input')?.value || '0') || 0.25;
   const penaltySeen    = parseInt(document.getElementById('penalty-seen-input')?.value || '3', 10) || 3;
   const penaltyUnseen  = parseInt(document.getElementById('penalty-unseen-input')?.value || '10', 10) || 10;
   loading(true);
@@ -2283,6 +2288,7 @@ async function saveGameSettings() {
   const sel      = document.getElementById('gs-currency');
   const currency = sel.value;
   const stake    = parseFloat(document.getElementById('gs-stake').value) || 0;
+  if (stake <= 0) { showError('game-settings-error', 'Stake per point must be greater than 0.'); return; }
   loading(true);
   try {
     const updated = await apiFetch(`/games/${currentGame.id}/settings`, {
@@ -2380,7 +2386,7 @@ let _adminPassword = '';
 
 function openAdminDialog() {
   // If we already have a cached admin password, go straight to the screen
-  const cached = sessionStorage.getItem('mc-admin-pw');
+  const cached = sessionStorage.getItem(STORAGE_ADMIN);
   if (cached) { _adminPassword = cached; loadAdminScreen(); return; }
   document.getElementById('admin-pw-input').value = '';
   document.getElementById('admin-pw-error').classList.remove('visible');
@@ -2400,7 +2406,7 @@ async function loadAdminScreen() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Wrong password.');
-    sessionStorage.setItem('mc-admin-pw', _adminPassword);
+    sessionStorage.setItem(STORAGE_ADMIN, _adminPassword);
     try { renderAdminScreen(data); } catch(renderErr) {
       document.getElementById('admin-user-list').innerHTML =
         `<div class="error-msg visible">Render error: ${renderErr.message}</div>`;
@@ -2515,10 +2521,10 @@ async function adminOpenGame(gameId, userId) {
 // ── Boot: restore session from stored token ───────────────────────────────────
 (async () => {
   // Restore admin password for the session
-  const cachedPw = sessionStorage.getItem('mc-admin-pw');
+  const cachedPw = sessionStorage.getItem(STORAGE_ADMIN);
   if (cachedPw) _adminPassword = cachedPw;
 
-  const token = localStorage.getItem('mc-token');
+  const token = localStorage.getItem(STORAGE_TOKEN);
   if (!token) { showScreen('screen-auth'); return; }
 
   // Token exists — show auth screen immediately so UI is never blocked,
@@ -2531,7 +2537,7 @@ async function adminOpenGame(gameId, userId) {
     showScreen('screen-home');
   } catch(_) {
     // Token expired or invalid — stay on auth screen
-    localStorage.removeItem('mc-token');
+    localStorage.removeItem(STORAGE_TOKEN);
   }
 })();
 </script>

@@ -2,7 +2,7 @@
 Hand-level operations: finalize a hand, compute points, retrieve history.
 """
 
-from database import get_connection, insert_returning
+from database import get_connection, insert_returning, DB_BACKEND
 
 def compute_points(entries: list[dict], better_game: bool = False,
                    penalty_seen: int = 3, penalty_unseen: int = 10) -> list[dict]:
@@ -24,9 +24,12 @@ def compute_points(entries: list[dict], better_game: bool = False,
     if len(winners) != 1:
         raise ValueError("Exactly one winner must be designated.")
 
-    winner_entry = winners[0]
-    if winner_entry["status"] == "unseen":
+    if winners[0]["status"] == "unseen":
         raise ValueError("The winner cannot have Unseen status.")
+
+    # Work on shallow copies to avoid mutating caller's data
+    entries = [dict(e) for e in entries]
+    winner_entry = next(e for e in entries if e.get("is_winner"))
 
     # Unseen players have no maal
     for e in entries:
@@ -34,12 +37,12 @@ def compute_points(entries: list[dict], better_game: bool = False,
             e["maal"] = 0
 
     total_maal = sum(e["maal"] for e in entries)
+    status_penalty = {"seen": penalty_seen, "unseen": penalty_unseen, "duplee": 0}
 
     non_winner_total = 0
     for e in entries:
         if e["is_winner"]:
             continue
-        status_penalty = {"seen": penalty_seen, "unseen": penalty_unseen, "duplee": 0}
         pts = -1 * (total_maal + status_penalty[e["status"]] - e["maal"] * n)
         e["points"] = pts
         non_winner_total += pts
@@ -97,7 +100,6 @@ def finalize_hand(game_id: int, raw_entries: list[dict], better_game: bool = Fal
     )
     hand_number = cur.fetchone()["next_num"]
 
-    from database import DB_BACKEND
     bg_val = better_game if DB_BACKEND == "postgres" else (1 if better_game else 0)
 
     hand = insert_returning(

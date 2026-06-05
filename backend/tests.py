@@ -85,8 +85,8 @@ class TestScoring(unittest.TestCase):
             ("seen", 10, False),
             ("seen",  5, False),
         ])
-        compute_points(entries)
-        self.assertEqual(sum(e["points"] for e in entries), 0)
+        result = compute_points(entries)
+        self.assertEqual(sum(e["points"] for e in result), 0)
 
     def test_unseen_maal_forced_to_zero(self):
         from hand_model import compute_points
@@ -95,17 +95,17 @@ class TestScoring(unittest.TestCase):
             ("unseen", 99, False),  # maal should be zeroed
             ("seen",   10, False),
         ])
-        compute_points(entries)
-        self.assertEqual(entries[1]["maal"], 0)
-        self.assertEqual(sum(e["points"] for e in entries), 0)
+        result = compute_points(entries)
+        self.assertEqual(result[1]["maal"], 0)
+        self.assertEqual(sum(e["points"] for e in result), 0)
 
     def test_better_game_doubles_points(self):
         from hand_model import compute_points
         entries_normal = self._make_entries([("seen",10,True),("seen",5,False),("seen",0,False)])
         entries_better = self._make_entries([("seen",10,True),("seen",5,False),("seen",0,False)])
-        compute_points(entries_normal, better_game=False)
-        compute_points(entries_better, better_game=True)
-        for n, b in zip(entries_normal, entries_better):
+        res_normal = compute_points(entries_normal, better_game=False)
+        res_better = compute_points(entries_better, better_game=True)
+        for n, b in zip(res_normal, res_better):
             self.assertEqual(b["points"], n["points"] * 2)
 
     def test_winner_cannot_be_unseen(self):
@@ -131,8 +131,8 @@ class TestScoring(unittest.TestCase):
             ("seen",   5, False),
             ("unseen", 0, False),
         ])
-        compute_points(entries, penalty_seen=5, penalty_unseen=20)
-        self.assertEqual(sum(e["points"] for e in entries), 0)
+        result = compute_points(entries, penalty_seen=5, penalty_unseen=20)
+        self.assertEqual(sum(e["points"] for e in result), 0)
 
     def test_duplee_zero_penalty(self):
         from hand_model import compute_points
@@ -141,8 +141,8 @@ class TestScoring(unittest.TestCase):
             ("duplee",  5, False),
             ("seen",    0, False),
         ])
-        compute_points(entries)
-        self.assertEqual(sum(e["points"] for e in entries), 0)
+        result = compute_points(entries)
+        self.assertEqual(sum(e["points"] for e in result), 0)
 
 
 # ════════════════════════════════════════════════════════════════════════════

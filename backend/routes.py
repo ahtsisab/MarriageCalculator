@@ -4,13 +4,13 @@ Token-based auth: server issues a signed token on login; client sends it
 as "Authorization: Bearer <token>" — no cookies, works on Safari iOS.
 """
 
-import hmac, hashlib, base64, json, time, os
+import hmac, hashlib, base64, json, time, os, threading
 from flask import Blueprint, request, jsonify, g
 from game_model import (create_game, list_games, get_game, get_scoreboard,
                          add_player, set_player_active, delete_game, end_game, resume_game,
                          get_or_create_join_code, join_game_by_code,
                          get_game_members, user_can_access,
-                         rename_player, delete_player, _bool_val)
+                         rename_player, delete_player, update_game_settings)
 from hand_model import finalize_hand, get_hand
 from user_model import register, login, change_pin
 from database import get_connection
@@ -172,8 +172,8 @@ def route_create_game():
         return _err("Game name is required.")
     if not isinstance(players, list) or not all(isinstance(p, str) for p in players):
         return _err("players must be a list of strings.")
-    if stake < 0:
-        return _err("stake_per_point must be non-negative.")
+    if stake <= 0:
+        return _err("stake_per_point must be greater than 0.")
     if penalty_seen < 0 or penalty_unseen < 0:
         return _err("Penalties must be non-negative.")
     try:
@@ -359,19 +359,12 @@ def route_update_game_settings(game_id):
     game = get_game(game_id)
     if not game: return _err("Game not found.", 404)
     if (e := _require_owner(game)): return e
-    data             = request.get_json(force=True)
-    currency         = (data.get("currency") or "USD").strip()
-    stake            = float(data.get("stake_per_point", game["stake_per_point"]))
-    allow_better     = bool(data.get("allow_better_game", game["allow_better_game"]))
-    if stake < 0: return _err("Stake must be non-negative.")
-    conn = get_connection()
-    cur  = conn.cursor()
-    cur.execute(
-        "UPDATE games SET currency = %s, stake_per_point = %s, allow_better_game = %s WHERE id = %s",
-        (currency, stake, _bool_val(allow_better), game_id),
-    )
-    conn.commit()
-    cur.close(); conn.close()
+    data         = request.get_json(force=True)
+    currency     = (data.get("currency") or "USD").strip()
+    stake        = float(data.get("stake_per_point", game["stake_per_point"]))
+    allow_better = bool(data.get("allow_better_game", game["allow_better_game"]))
+    if stake <= 0: return _err("Stake per point must be greater than 0.")
+    update_game_settings(game_id, currency=currency, stake_per_point=stake, allow_better_game=allow_better)
     return jsonify({ **game, "currency": currency, "stake_per_point": stake, "allow_better_game": allow_better })
 
 
@@ -471,7 +464,6 @@ def route_delete_hand(hand_id):
 # ── Admin ──────────────────────────────────────────────────────────────────────
 
 # Simple in-process rate limiter for admin endpoints
-import threading
 _admin_attempts: dict = {}  # ip -> [timestamp, ...]
 _admin_lock = threading.Lock()
 _ADMIN_MAX_ATTEMPTS = 10   # per window
