@@ -727,11 +727,11 @@ body::before { display: none; }
           oninput="_checkCreateGameReady()">
       </div>
 
-      <!-- Game Options (collapsible) -->
+      <!-- Game Settings (collapsible) -->
       <div style="border:1px solid var(--gold-dim);border-radius:8px;overflow:hidden;margin-bottom:14px;background:rgba(201,168,76,.03)">
         <div onclick="toggleGameOptions()"
              style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;user-select:none;background:rgba(201,168,76,.06)">
-          <span style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--gold-dim)">⚙ Game Options</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--gold-dim)">⚙ Game Settings</span>
           <span id="game-options-chevron" style="font-size:12px;color:var(--gold-dim);transition:transform .2s">▸</span>
         </div>
         <div id="game-options-body" style="display:none;padding:14px;border-top:1px solid var(--gold-dim)">
@@ -849,7 +849,7 @@ body::before { display: none; }
       <h2 style="margin:0"><span class="suit">♥</span> <span id="game-title-text">Game</span></h2>
       <div style="display:flex;gap:8px">
         <button class="btn-secondary btn-sm" id="share-btn" onclick="showShareDialog()">Share</button>
-        <button class="btn-secondary btn-sm" id="game-settings-btn" onclick="showGameSettings()" style="display:none">Settings</button>
+        <button class="btn-secondary btn-sm" id="game-settings-btn" onclick="showGameSettings()" style="display:none">Game Settings</button>
         <button class="btn-ghost btn-sm btn-end" id="end-game-btn" onclick="showEndGame()">End Game</button>
         <button class="btn-ghost btn-sm btn-resume" id="resume-game-header-btn" onclick="doResumeGame()" style="display:none">Resume</button>
       </div>
@@ -1194,7 +1194,7 @@ function showScreen(id) {
     const bgLabel  = document.getElementById('allow-better-game-label');
     if (bgSwitch) bgSwitch.classList.remove('on');
     if (bgLabel)  bgLabel.textContent = 'Off';
-    // Collapse game options panel
+    // Collapse game settings panel
     const optBody    = document.getElementById('game-options-body');
     const optChevron = document.getElementById('game-options-chevron');
     if (optBody)    optBody.style.display = 'none';
