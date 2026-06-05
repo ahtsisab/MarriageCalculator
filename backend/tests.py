@@ -432,7 +432,8 @@ class TestFrontend(unittest.TestCase):
             # Game screen
             "screen-game", "game-breadcrumb-bar", "game-title-text",
             "player-roster", "add-player-section", "new-player-name",
-            "add-hand-btn", "end-game-btn", "resume-game-header-btn", "share-btn",
+            "add-hand-btn", "end-game-btn", "resume-game-header-btn", "share-btn", "game-settings-btn",
+            "game-settings-overlay", "gs-currency", "gs-stake", "gs-better-game-switch", "gs-better-game-label",
             "scoreboard-full", "scoreboard-condensed",
             "score-thead", "score-tbody", "score-tfoot",
             "scoreboard-empty", "settlement-panel",
@@ -503,6 +504,7 @@ class TestFrontend(unittest.TestCase):
             # Delete/leave
             "promptDelete", "confirmDelete", "promptLeave",
             "showChangePinDialog", "closeChangePinDialog", "doChangePin",
+            "showGameSettings", "closeGameSettings", "saveGameSettings", "toggleGsBetterGame",
             "toggleUserMenu", "closeUserMenu",
         ]
         import re

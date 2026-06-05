@@ -831,6 +831,7 @@ body::before { display: none; }
       <h2 style="margin:0"><span class="suit">♥</span> <span id="game-title-text">Game</span></h2>
       <div style="display:flex;gap:8px">
         <button class="btn-secondary btn-sm" id="share-btn" onclick="showShareDialog()">Share</button>
+        <button class="btn-ghost btn-sm" id="game-settings-btn" onclick="showGameSettings()" style="display:none" title="Game Settings">⚙</button>
         <button class="btn-ghost btn-sm btn-end" id="end-game-btn" onclick="showEndGame()">End Game</button>
         <button class="btn-ghost btn-sm btn-resume" id="resume-game-header-btn" onclick="doResumeGame()" style="display:none">Resume</button>
       </div>
@@ -1013,6 +1014,69 @@ body::before { display: none; }
     </div>
     <div style="margin-top:16px">
       <button class="btn-ghost btn-full" onclick="closeShareDialog()">Done</button>
+    </div>
+  </div>
+</div>
+<div id="game-settings-overlay" class="dialog-overlay">
+  <div class="dialog-box">
+    <div class="dialog-title">⚙ Game Settings</div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Stake per Point</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="gs-currency"
+          style="flex:1;font-family:'DM Mono',monospace;font-size:12px;padding:10px 28px 10px 10px;
+                 background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+                 color:var(--text);-webkit-appearance:none;appearance:none;
+                 background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%238a7d60' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\");
+                 background-repeat:no-repeat;background-position:right 8px center;cursor:pointer">
+          <option value="USD" data-symbol="$">$ USD — US Dollar</option>
+          <option value="NPR" data-symbol="Rs">Rs NPR — Nepali Rupee</option>
+          <option value="EUR" data-symbol="€">€ EUR — Euro</option>
+          <option value="GBP" data-symbol="£">£ GBP — British Pound</option>
+          <option value="INR" data-symbol="₹">₹ INR — Indian Rupee</option>
+          <option value="CAD" data-symbol="C$">C$ CAD — Canadian Dollar</option>
+          <option value="AUD" data-symbol="A$">A$ AUD — Australian Dollar</option>
+          <option value="JPY" data-symbol="¥">¥ JPY — Japanese Yen</option>
+          <option value="CHF" data-symbol="Fr">Fr CHF — Swiss Franc</option>
+          <option value="SGD" data-symbol="S$">S$ SGD — Singapore Dollar</option>
+        </select>
+        <input type="number" id="gs-stake" min="0" step="0.01" inputmode="decimal"
+          style="width:80px;font-family:'DM Mono',monospace;font-size:14px;padding:10px 8px;text-align:right"
+          onfocus="if(this.value==this.defaultValue)this.value=''"
+          onblur="if(this.value==='')this.value=this.defaultValue">
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <label style="margin:0">Allow Better Game</label>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mute);margin-top:3px">All points doubled for a hand</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="gs-better-game-label" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mute);text-transform:uppercase;letter-spacing:1px">Off</span>
+        <button id="gs-better-game-switch" class="chip-switch" onclick="toggleGsBetterGame()" title="Allow Better Game"></button>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+        <span style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-mute)">Penalties</span>
+        <span style="font-size:11px;color:var(--text-mute)">🔒</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-mute);margin-bottom:4px">Seen</div>
+          <div id="gs-penalty-seen" style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text-dim)">3</div>
+        </div>
+        <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text-mute);margin-bottom:4px">Unseen</div>
+          <div id="gs-penalty-unseen" style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text-dim)">10</div>
+        </div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mute);margin-top:8px">Set at game creation and cannot be changed.</div>
+    </div>
+    <div id="game-settings-error" class="error-msg" style="margin-bottom:10px"></div>
+    <div class="dialog-actions">
+      <button class="btn-ghost" onclick="closeGameSettings()">Cancel</button>
+      <button class="btn-primary" onclick="saveGameSettings()">Save</button>
     </div>
   </div>
 </div>
@@ -1506,6 +1570,7 @@ async function openGame(gameId) {
     document.getElementById('add-hand-btn').style.display         = canEdit ? '' : 'none';
     document.getElementById('end-game-btn').style.display         = canEdit ? '' : 'none';
     document.getElementById('add-player-section').style.display   = canEdit ? 'block' : 'none';
+    document.getElementById('game-settings-btn').style.display    = canEdit ? '' : 'none';
     document.getElementById('resume-game-header-btn').style.display = 'none'; // set by _applyEndedGameUI if needed
 
     renderPlayerRoster(game.players, canEdit, board);
@@ -2112,10 +2177,11 @@ async function confirmEndGame() {
 
 function _applyEndedGameUI() {
   // Lock out owner controls
-  document.getElementById('add-hand-btn').style.display    = 'none';
-  document.getElementById('end-game-btn').style.display    = 'none';
+  document.getElementById('add-hand-btn').style.display       = 'none';
+  document.getElementById('end-game-btn').style.display       = 'none';
+  document.getElementById('game-settings-btn').style.display  = 'none';
   document.getElementById('add-player-section').style.display = 'none';
-  document.getElementById('share-btn').style.display       = 'none';
+  document.getElementById('share-btn').style.display          = 'none';
   // Show resume button (owner only)
   const resumeHeaderBtn = document.getElementById('resume-game-header-btn');
   if (resumeHeaderBtn) resumeHeaderBtn.style.display = currentGame?.is_owner ? '' : 'none';
@@ -2184,6 +2250,59 @@ document.getElementById('end-game-confirm-overlay').addEventListener('click', e 
 });
 let _currentShareCode = '';
 
+// ── Game Settings ─────────────────────────────────────────────────────────────
+let _gsBetterGame = false;
+
+function toggleGsBetterGame() {
+  _gsBetterGame = !_gsBetterGame;
+  document.getElementById('gs-better-game-switch').classList.toggle('on', _gsBetterGame);
+  document.getElementById('gs-better-game-label').textContent = _gsBetterGame ? 'On' : 'Off';
+}
+
+function showGameSettings() {
+  if (!currentGame) return;
+  const sel = document.getElementById('gs-currency');
+  sel.value = currentGame.currency || 'USD';
+  const stakeInp = document.getElementById('gs-stake');
+  stakeInp.value = currentGame.stake_per_point ?? 0.25;
+  stakeInp.defaultValue = stakeInp.value;
+  _gsBetterGame = !!currentGame.allow_better_game;
+  document.getElementById('gs-better-game-switch').classList.toggle('on', _gsBetterGame);
+  document.getElementById('gs-better-game-label').textContent = _gsBetterGame ? 'On' : 'Off';
+  document.getElementById('gs-penalty-seen').textContent   = currentGame.penalty_seen   ?? 3;
+  document.getElementById('gs-penalty-unseen').textContent = currentGame.penalty_unseen ?? 10;
+  document.getElementById('game-settings-error').classList.remove('visible');
+  document.getElementById('game-settings-overlay').classList.add('visible');
+}
+
+function closeGameSettings() {
+  document.getElementById('game-settings-overlay').classList.remove('visible');
+}
+
+async function saveGameSettings() {
+  const sel      = document.getElementById('gs-currency');
+  const currency = sel.value;
+  const stake    = parseFloat(document.getElementById('gs-stake').value) || 0;
+  loading(true);
+  try {
+    const updated = await apiFetch(`/games/${currentGame.id}/settings`, {
+      method: 'PATCH',
+      body: JSON.stringify({ currency, stake_per_point: stake, allow_better_game: _gsBetterGame }),
+    });
+    currentGame.currency          = updated.currency;
+    currentGame.stake_per_point   = updated.stake_per_point;
+    currentGame.allow_better_game = updated.allow_better_game;
+    closeGameSettings();
+    if (currentGame._lastBoard) renderScoreboard(currentGame.players, currentGame._lastBoard);
+  } catch(e) { showError('game-settings-error', e.message); }
+  finally { loading(false); }
+}
+
+document.getElementById('game-settings-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeGameSettings();
+});
+
+// ── Share / Join ──────────────────────────────────────────────────────────────
 async function showShareDialog() {
   if (!currentGame) return;
   loading(true);
