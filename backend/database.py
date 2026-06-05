@@ -140,7 +140,8 @@ _SCHEMA_PG = [
         currency           TEXT DEFAULT 'USD',
         allow_better_game  BOOLEAN DEFAULT FALSE,
         penalty_seen       INTEGER DEFAULT 3,
-        penalty_unseen     INTEGER DEFAULT 10
+        penalty_unseen     INTEGER DEFAULT 10,
+        duplee_bonus       INTEGER DEFAULT 0
     )""",
     """CREATE TABLE IF NOT EXISTS players (
         id        SERIAL PRIMARY KEY,
@@ -202,7 +203,8 @@ _SCHEMA_SQLITE = [
         currency           TEXT DEFAULT 'USD',
         allow_better_game  INTEGER DEFAULT 0,
         penalty_seen       INTEGER DEFAULT 3,
-        penalty_unseen     INTEGER DEFAULT 10
+        penalty_unseen     INTEGER DEFAULT 10,
+        duplee_bonus       INTEGER DEFAULT 0
     )""",
     """CREATE TABLE IF NOT EXISTS players (
         id        INTEGER PRIMARY KEY AUTOINCREMENT,

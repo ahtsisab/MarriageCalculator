@@ -783,6 +783,22 @@ body::before { display: none; }
             </div>
           </div>
 
+          <!-- Duplee Salami -->
+          <div style="margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <input type="checkbox" id="duplee-salami-check" onchange="toggleDupleeSalami()"
+                style="width:16px;height:16px;cursor:pointer;accent-color:var(--gold);flex-shrink:0">
+              <label for="duplee-salami-check" style="font-family:'DM Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);cursor:pointer;margin:0">Auto-add Duplee Salami</label>
+            </div>
+            <div id="duplee-salami-value" style="display:none;display:flex;align-items:center;gap:10px;padding-left:24px">
+              <input type="number" id="duplee-bonus-input" value="5" min="1" max="99" inputmode="numeric"
+                style="width:64px;font-family:'DM Mono',monospace;font-size:15px;text-align:center;padding:8px"
+                onfocus="if(this.value==this.defaultValue)this.value=''"
+                onblur="if(this.value==='')this.value=this.defaultValue">
+              <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mute);line-height:1.4">points added to winner's maal on duplee win</span>
+            </div>
+          </div>
+
           <!-- Better Game -->
           <div class="field" style="margin-bottom:0;display:flex;align-items:center;justify-content:space-between">
             <label style="margin:0">Allow Better Game</label>
@@ -833,7 +849,7 @@ body::before { display: none; }
       <h2 style="margin:0"><span class="suit">♥</span> <span id="game-title-text">Game</span></h2>
       <div style="display:flex;gap:8px">
         <button class="btn-secondary btn-sm" id="share-btn" onclick="showShareDialog()">Share</button>
-        <button class="btn-ghost btn-sm" id="game-settings-btn" onclick="showGameSettings()" style="display:none">Settings</button>
+        <button class="btn-secondary btn-sm" id="game-settings-btn" onclick="showGameSettings()" style="display:none">Settings</button>
         <button class="btn-ghost btn-sm btn-end" id="end-game-btn" onclick="showEndGame()">End Game</button>
         <button class="btn-ghost btn-sm btn-resume" id="resume-game-header-btn" onclick="doResumeGame()" style="display:none">Resume</button>
       </div>
@@ -1075,6 +1091,20 @@ body::before { display: none; }
       </div>
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mute);margin-top:8px">Set at game creation and cannot be changed.</div>
     </div>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <input type="checkbox" id="gs-duplee-check" onchange="toggleGsDupleeSalami()"
+          style="width:16px;height:16px;cursor:pointer;accent-color:var(--gold);flex-shrink:0">
+        <label for="gs-duplee-check" style="font-family:'DM Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);cursor:pointer;margin:0">Auto-add Duplee Salami</label>
+      </div>
+      <div id="gs-duplee-value" style="display:none;align-items:center;gap:10px;padding-left:24px">
+        <input type="number" id="gs-duplee-bonus" min="1" max="99" inputmode="numeric"
+          style="width:64px;font-family:'DM Mono',monospace;font-size:16px;text-align:center;padding:8px"
+          onfocus="if(this.value==this.defaultValue)this.value=''"
+          onblur="if(this.value==='')this.value=this.defaultValue">
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-mute);line-height:1.4">points added to winner's maal on duplee win</span>
+      </div>
+    </div>
     <div id="game-settings-error" class="error-msg" style="margin-bottom:10px"></div>
     <div class="dialog-actions">
       <button class="btn-ghost" onclick="closeGameSettings()">Cancel</button>
@@ -1169,6 +1199,9 @@ function showScreen(id) {
     const optChevron = document.getElementById('game-options-chevron');
     if (optBody)    optBody.style.display = 'none';
     if (optChevron) optChevron.style.transform = '';
+    document.getElementById('duplee-bonus-input').value = '5';
+    const dsCheck = document.getElementById('duplee-salami-check');
+    if (dsCheck) { dsCheck.checked = false; document.getElementById('duplee-salami-value').style.display = 'none'; }
     const cgBtn = document.getElementById('create-game-btn');
     if (cgBtn) cgBtn.disabled = true;
     loadPlayerSuggestions();  // prefetch, won't render until player count is chosen
@@ -1422,6 +1455,20 @@ function toggleAllowBetterGame() {
   if (btn) btn.classList.toggle('on', _allowBetterGame);
   if (lbl) lbl.textContent = _allowBetterGame ? 'On' : 'Off';
 }
+
+function toggleDupleeSalami() {
+  const checked = document.getElementById('duplee-salami-check').checked;
+  const val     = document.getElementById('duplee-salami-value');
+  val.style.display = checked ? 'flex' : 'none';
+  if (checked) document.getElementById('duplee-bonus-input').focus();
+}
+
+function toggleGsDupleeSalami() {
+  const checked = document.getElementById('gs-duplee-check').checked;
+  const val     = document.getElementById('gs-duplee-value');
+  val.style.display = checked ? 'flex' : 'none';
+  if (checked) document.getElementById('gs-duplee-bonus').focus();
+}
 function setPlayerCount(n) {
   const prev = selectedPlayerCount;
   selectedPlayerCount = n;
@@ -1536,6 +1583,9 @@ async function createGame() {
       allow_better_game:  _allowBetterGame,
       penalty_seen:       penaltySeen,
       penalty_unseen:     penaltyUnseen,
+      duplee_bonus:       document.getElementById('duplee-salami-check')?.checked
+                            ? (parseInt(document.getElementById('duplee-bonus-input')?.value || '5', 10) || 5)
+                            : 0,
     }) });
     currentGame = game; openGame(game.id);
   } catch(e) { showError('new-game-error', e.message); }
@@ -1927,6 +1977,9 @@ function renderHandEntries() {
           <input type="number" class="maal-input" value="${e.status === 'unseen' ? '' : (e.maal ?? '')}" min="0" id="maal-${i}"
             inputmode="numeric" pattern="[0-9]*" placeholder="0"
             ${e.status === 'unseen' ? 'disabled style="opacity:.35;pointer-events:none"' : `onchange="setMaal(${i},this.value)" oninput="setMaal(${i},this.value)"`}>
+          ${e.is_winner && e.status === 'duplee' && (currentGame?.duplee_bonus ?? 0) > 0
+            ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);border:1px solid var(--gold-dim);border-radius:4px;padding:3px 6px;white-space:nowrap">+${currentGame.duplee_bonus} bonus</span>`
+            : ''}
         </div>
       </div>
     </div>`).join('');
@@ -1975,18 +2028,28 @@ function _showSyncError(msg) {
 }
 
 // Compute points locally using same formula as server
-function _computePointsLocally(entries, betterGame, penaltySeen, penaltyUnseen) {
-  const active = entries.filter(e => e.status !== 'unseen');
-  const totalMaal = active.reduce((s, e) => s + (e.maal ?? 0), 0);
+function _computePointsLocally(entries, betterGame, penaltySeen, penaltyUnseen, dupleeBonus = 0) {
   const n = entries.length;
-  const result = entries.map(e => {
-    if (e.is_winner) return { ...e, points: 0 };
+  const result = entries.map(e => ({ ...e }));
+  const winner = result.find(e => e.is_winner);
+
+  // Apply duplee bonus to winner's effective maal
+  if (winner && winner.status === 'duplee' && dupleeBonus > 0) {
+    winner.maal = (winner.maal ?? 0) + dupleeBonus;
+  }
+
+  // Zero unseen maal
+  result.forEach(e => { if (e.status === 'unseen') e.maal = 0; });
+
+  const totalMaal = result.reduce((s, e) => s + (e.maal ?? 0), 0);
+  let nonWinnerTotal = 0;
+  result.forEach(e => {
+    if (e.is_winner) return;
     const penalty = e.status === 'seen' ? penaltySeen : e.status === 'unseen' ? penaltyUnseen : 0;
-    const maal = e.status === 'unseen' ? 0 : (e.maal ?? 0);
-    return { ...e, maal, points: -1 * (totalMaal + penalty - maal * n) };
+    e.points = -1 * (totalMaal + penalty - (e.maal ?? 0) * n);
+    nonWinnerTotal += e.points;
   });
-  const winnerIdx = result.findIndex(e => e.is_winner);
-  result[winnerIdx].points = -result.reduce((s, e, i) => i === winnerIdx ? s : s + e.points, 0);
+  winner.points = -nonWinnerTotal;
   if (betterGame) result.forEach(e => { e.points *= 2; });
   return result;
 }
@@ -2067,6 +2130,7 @@ async function finalizeHand() {
     isBetterGame,
     currentGame.penalty_seen   ?? 3,
     currentGame.penalty_unseen ?? 10,
+    currentGame.duplee_bonus   ?? 0,
   );
   const board = currentGame._lastBoard || { hands: [], totals: {} };
   const nextHandNum = (board.hands.length ? Math.max(...board.hands.map(h => h.hand_number)) : 0) + 1;
@@ -2276,6 +2340,13 @@ function showGameSettings() {
   document.getElementById('gs-better-game-label').textContent = _gsBetterGame ? 'On' : 'Off';
   document.getElementById('gs-penalty-seen').textContent   = currentGame.penalty_seen   ?? 3;
   document.getElementById('gs-penalty-unseen').textContent = currentGame.penalty_unseen ?? 10;
+  const dbi = document.getElementById('gs-duplee-bonus');
+  const dsCheck = document.getElementById('gs-duplee-check');
+  const dsVal   = document.getElementById('gs-duplee-value');
+  const bonus = currentGame.duplee_bonus ?? 0;
+  if (dsCheck) dsCheck.checked = bonus > 0;
+  if (dsVal)   dsVal.style.display = bonus > 0 ? 'flex' : 'none';
+  if (dbi)   { dbi.value = bonus > 0 ? bonus : 5; dbi.defaultValue = dbi.value; }
   document.getElementById('game-settings-error').classList.remove('visible');
   document.getElementById('game-settings-overlay').classList.add('visible');
 }
@@ -2293,11 +2364,15 @@ async function saveGameSettings() {
   try {
     const updated = await apiFetch(`/games/${currentGame.id}/settings`, {
       method: 'PATCH',
-      body: JSON.stringify({ currency, stake_per_point: stake, allow_better_game: _gsBetterGame }),
+      body: JSON.stringify({ currency, stake_per_point: stake, allow_better_game: _gsBetterGame,
+        duplee_bonus: document.getElementById('gs-duplee-check')?.checked
+          ? (parseInt(document.getElementById('gs-duplee-bonus')?.value || '5', 10) || 5)
+          : 0 }),
     });
     currentGame.currency          = updated.currency;
     currentGame.stake_per_point   = updated.stake_per_point;
     currentGame.allow_better_game = updated.allow_better_game;
+    currentGame.duplee_bonus      = updated.duplee_bonus ?? 0;
     closeGameSettings();
     if (currentGame._lastBoard) renderScoreboard(currentGame.players, currentGame._lastBoard);
   } catch(e) { showError('game-settings-error', e.message); }

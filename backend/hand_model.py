@@ -5,7 +5,8 @@ Hand-level operations: finalize a hand, compute points, retrieve history.
 from database import get_connection, insert_returning, DB_BACKEND
 
 def compute_points(entries: list[dict], better_game: bool = False,
-                   penalty_seen: int = 3, penalty_unseen: int = 10) -> list[dict]:
+                   penalty_seen: int = 3, penalty_unseen: int = 10,
+                   duplee_bonus: int = 0) -> list[dict]:
     """
     Compute points for all entries. Only active players are included.
 
@@ -35,6 +36,11 @@ def compute_points(entries: list[dict], better_game: bool = False,
     for e in entries:
         if e["status"] == "unseen":
             e["maal"] = 0
+
+    # Apply duplee bonus to winner's effective maal if they went duplee
+    if winner_entry["status"] == "duplee" and duplee_bonus > 0:
+        winner_entry["maal"] = winner_entry.get("maal", 0) + duplee_bonus
+        winner_entry["_duplee_bonus_applied"] = duplee_bonus
 
     total_maal = sum(e["maal"] for e in entries)
     status_penalty = {"seen": penalty_seen, "unseen": penalty_unseen, "duplee": 0}
@@ -79,7 +85,8 @@ def _fetch_hand_entries(cur, hand_id: int) -> list[dict]:
 
 
 def finalize_hand(game_id: int, raw_entries: list[dict], better_game: bool = False,
-                  penalty_seen: int = 3, penalty_unseen: int = 10) -> dict:
+                  penalty_seen: int = 3, penalty_unseen: int = 10,
+                  duplee_bonus: int = 0) -> dict:
     """
     Validate, compute points, and persist a new hand.
     Only entries for active players should be passed in.
@@ -89,7 +96,8 @@ def finalize_hand(game_id: int, raw_entries: list[dict], better_game: bool = Fal
     penalty_seen / penalty_unseen: per-game configurable penalties
     """
     entries = compute_points(raw_entries, better_game=better_game,
-                             penalty_seen=penalty_seen, penalty_unseen=penalty_unseen)
+                             penalty_seen=penalty_seen, penalty_unseen=penalty_unseen,
+                             duplee_bonus=duplee_bonus)
 
     conn = get_connection()
     cur = conn.cursor()

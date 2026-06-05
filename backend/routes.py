@@ -168,6 +168,7 @@ def route_create_game():
     allow_better_game = bool(data.get("allow_better_game", False))
     penalty_seen      = int(data.get("penalty_seen", 3))
     penalty_unseen    = int(data.get("penalty_unseen", 10))
+    duplee_bonus      = int(data.get("duplee_bonus", 0))
     if not name:
         return _err("Game name is required.")
     if not isinstance(players, list) or not all(isinstance(p, str) for p in players):
@@ -176,9 +177,12 @@ def route_create_game():
         return _err("stake_per_point must be greater than 0.")
     if penalty_seen < 0 or penalty_unseen < 0:
         return _err("Penalties must be non-negative.")
+    if duplee_bonus < 0:
+        return _err("Duplee bonus must be non-negative.")
     try:
         game = create_game(name, players, user_id=_uid(), stake_per_point=stake, currency=currency,
-                           allow_better_game=allow_better_game, penalty_seen=penalty_seen, penalty_unseen=penalty_unseen)
+                           allow_better_game=allow_better_game, penalty_seen=penalty_seen,
+                           penalty_unseen=penalty_unseen, duplee_bonus=duplee_bonus)
     except ValueError as exc:
         return _err(str(exc))
     return jsonify(game), 201
@@ -363,9 +367,11 @@ def route_update_game_settings(game_id):
     currency     = (data.get("currency") or "USD").strip()
     stake        = float(data.get("stake_per_point", game["stake_per_point"]))
     allow_better = bool(data.get("allow_better_game", game["allow_better_game"]))
+    duplee_bonus = int(data.get("duplee_bonus", game.get("duplee_bonus", 0)))
     if stake <= 0: return _err("Stake per point must be greater than 0.")
-    update_game_settings(game_id, currency=currency, stake_per_point=stake, allow_better_game=allow_better)
-    return jsonify({ **game, "currency": currency, "stake_per_point": stake, "allow_better_game": allow_better })
+    if duplee_bonus < 0: return _err("Duplee bonus must be non-negative.")
+    update_game_settings(game_id, currency=currency, stake_per_point=stake, allow_better_game=allow_better, duplee_bonus=duplee_bonus)
+    return jsonify({ **game, "currency": currency, "stake_per_point": stake, "allow_better_game": allow_better, "duplee_bonus": duplee_bonus })
 
 
 @api.post("/games/<int:game_id>/resume")
@@ -422,7 +428,8 @@ def route_finalize_hand(game_id):
     try:
         hand = finalize_hand(game_id, raw_entries, better_game=better_game,
                             penalty_seen=game.get("penalty_seen", 3),
-                            penalty_unseen=game.get("penalty_unseen", 10))
+                            penalty_unseen=game.get("penalty_unseen", 10),
+                            duplee_bonus=game.get("duplee_bonus", 0))
     except ValueError as exc:
         return _err(str(exc))
     return jsonify(hand), 201

@@ -40,7 +40,7 @@ def _unique_join_code(cur) -> str:
 def create_game(name: str, player_names: list[str], user_id: int | None = None,
                 stake_per_point: float = 0.25, currency: str = "USD",
                 allow_better_game: bool = False, penalty_seen: int = 3,
-                penalty_unseen: int = 10) -> dict:
+                penalty_unseen: int = 10, duplee_bonus: int = 0) -> dict:
     if not 3 <= len(player_names) <= 6:
         raise ValueError("A game must start with between 3 and 6 players.")
     seen = set()
@@ -56,9 +56,9 @@ def create_game(name: str, player_names: list[str], user_id: int | None = None,
     join_code = _unique_join_code(cur)
     game = insert_returning(
         cur, conn,
-        sql_pg="INSERT INTO games (name, user_id, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen, join_code) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, name, created_at, user_id, join_code, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen",
-        sql_sqlite="INSERT INTO games (name, user_id, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen, join_code) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-        params=(name, user_id, stake_per_point, currency, _bool_val(allow_better_game), penalty_seen, penalty_unseen, join_code),
+        sql_pg="INSERT INTO games (name, user_id, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen, duplee_bonus, join_code) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, name, created_at, user_id, join_code, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen, duplee_bonus",
+        sql_sqlite="INSERT INTO games (name, user_id, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen, duplee_bonus, join_code) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        params=(name, user_id, stake_per_point, currency, _bool_val(allow_better_game), penalty_seen, penalty_unseen, duplee_bonus, join_code),
     )
     game["players"]  = []
     game["is_owner"] = True
@@ -79,13 +79,13 @@ def create_game(name: str, player_names: list[str], user_id: int | None = None,
 
 
 def update_game_settings(game_id: int, currency: str, stake_per_point: float,
-                            allow_better_game: bool) -> None:
-    """Update editable game settings (currency, stake, better game flag)."""
+                            allow_better_game: bool, duplee_bonus: int = 0) -> None:
+    """Update editable game settings (currency, stake, better game flag, duplee bonus)."""
     conn = get_connection()
     cur  = conn.cursor()
     cur.execute(
-        "UPDATE games SET currency = %s, stake_per_point = %s, allow_better_game = %s WHERE id = %s",
-        (currency, stake_per_point, _bool_val(allow_better_game), game_id),
+        "UPDATE games SET currency = %s, stake_per_point = %s, allow_better_game = %s, duplee_bonus = %s WHERE id = %s",
+        (currency, stake_per_point, _bool_val(allow_better_game), duplee_bonus, game_id),
     )
     conn.commit()
     cur.close(); conn.close()
@@ -162,7 +162,7 @@ def get_game(game_id: int) -> dict | None:
     cur  = conn.cursor()
 
     cur.execute(
-        "SELECT id, name, created_at, is_active, user_id, join_code, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen FROM games WHERE id = %s",
+        "SELECT id, name, created_at, is_active, user_id, join_code, stake_per_point, currency, allow_better_game, penalty_seen, penalty_unseen, duplee_bonus FROM games WHERE id = %s",
         (game_id,),
     )
     row = cur.fetchone()
@@ -175,6 +175,7 @@ def get_game(game_id: int) -> dict | None:
     game["allow_better_game"] = bool(game.get("allow_better_game", False))
     game["penalty_seen"]      = int(game.get("penalty_seen", 3))
     game["penalty_unseen"]    = int(game.get("penalty_unseen", 10))
+    game["duplee_bonus"]      = int(game.get("duplee_bonus", 0))
 
     cur.execute(
         "SELECT id, name, position, is_active FROM players WHERE game_id = %s ORDER BY position",
